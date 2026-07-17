@@ -43,9 +43,17 @@ struct SignalDesktopExporter {
     private static let maximumStickerBytes = 300 * 1024
 
     let workspaceRoot: URL
+    private let makeArchive: (URL) throws -> Archive
 
     init(workspaceRoot: URL) {
+        self.init(workspaceRoot: workspaceRoot, makeArchive: { url in
+            try Archive(url: url, accessMode: .create)
+        })
+    }
+
+    init(workspaceRoot: URL, makeArchive: @escaping (URL) throws -> Archive) {
         self.workspaceRoot = workspaceRoot.resolvingSymlinksInPath().standardizedFileURL
+        self.makeArchive = makeArchive
     }
 
     func export(_ pack: PreparedPack) throws -> URL {
@@ -53,8 +61,9 @@ struct SignalDesktopExporter {
         let exportsDirectory = workspaceRoot.appendingPathComponent("Exports", isDirectory: true)
         try FileManager.default.createDirectory(at: exportsDirectory, withIntermediateDirectories: true)
 
-        let archiveURL = try uniqueArchiveURL(in: exportsDirectory, packTitle: pack.title)
-        let archive = try Archive(url: archiveURL, accessMode: .create)
+        let archiveDestination = try openNewArchive(in: exportsDirectory, packTitle: pack.title)
+        let archiveURL = archiveDestination.url
+        let archive = archiveDestination.archive
         let mediaNames = sources.indices.map { String(format: "sticker-%03d.%@", $0 + 1, sources[$0].extension) }
 
         for (index, source) in sources.enumerated() {
@@ -125,17 +134,30 @@ struct SignalDesktopExporter {
         return candidate
     }
 
-    private func uniqueArchiveURL(in exportsDirectory: URL, packTitle: String) throws -> URL {
+    private func openNewArchive(in exportsDirectory: URL, packTitle: String) throws -> (url: URL, archive: Archive) {
         let stem = archiveStem(for: packTitle)
         var suffix = 1
         while true {
             let filename = suffix == 1 ? "\(stem).zip" : "\(stem)-\(suffix).zip"
             let candidate = exportsDirectory.appendingPathComponent(filename)
-            if !FileManager.default.fileExists(atPath: candidate.path) {
-                return candidate
+            guard !FileManager.default.fileExists(atPath: candidate.path) else {
+                suffix += 1
+                continue
             }
-            suffix += 1
+
+            do {
+                return (candidate, try makeArchive(candidate))
+            } catch {
+                guard isExistingDestinationError(error) else { throw error }
+                suffix += 1
+            }
         }
+    }
+
+    private func isExistingDestinationError(_ error: Error) -> Bool {
+        let cocoaError = error as NSError
+        return cocoaError.domain == NSCocoaErrorDomain &&
+            cocoaError.code == CocoaError.Code.fileWriteFileExists.rawValue
     }
 
     private func archiveStem(for title: String) -> String {

@@ -59,6 +59,31 @@ final class SignalDesktopExporterTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: second.path))
     }
 
+    func testRetriesWithNextSuffixWhenArchiveCreationFindsCompetingDestination() throws {
+        let stickerURL = try write("sticker".data(using: .utf8)!, to: "inputs/sticker.webp")
+        let pack = makePack(stickers: [makeSticker(path: relativePath(for: stickerURL), emoji: "🙂", kind: .staticImage)])
+        let competingData = Data("another export".utf8)
+        var archiveCreationAttempts = 0
+        let exporter = SignalDesktopExporter(workspaceRoot: workspaceRoot, makeArchive: { url in
+            archiveCreationAttempts += 1
+            if archiveCreationAttempts == 1 {
+                try competingData.write(to: url)
+                throw NSError(
+                    domain: NSCocoaErrorDomain,
+                    code: CocoaError.Code.fileWriteFileExists.rawValue
+                )
+            }
+            return try Archive(url: url, accessMode: .create)
+        })
+
+        let archiveURL = try exporter.export(pack)
+        let firstCandidate = workspaceRoot.appendingPathComponent("Exports/MVP-Pack.zip")
+
+        XCTAssertEqual(archiveCreationAttempts, 2)
+        XCTAssertEqual(archiveURL.lastPathComponent, "MVP-Pack-2.zip")
+        XCTAssertEqual(try Data(contentsOf: firstCandidate), competingData)
+    }
+
     private func makePack(stickers: [PreparedSticker]) -> PreparedPack {
         PreparedPack(
             id: UUID(),
