@@ -95,7 +95,11 @@ struct SignalDesktopExporter {
     }
 
     private func validate(_ sticker: PreparedSticker) throws -> ValidatedSource {
-        try validateEmoji(sticker.emoji)
+        do {
+            try SignalStickerRules.validateEmoji(sticker.emoji)
+        } catch {
+            throw SignalDesktopExportError.invalidEmoji(sticker.emoji)
+        }
         let sourceURL = try resolvedWorkspaceFileURL(for: sticker.relativePath)
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: sourceURL.path) else {
@@ -107,7 +111,7 @@ struct SignalDesktopExporter {
             throw SignalDesktopExportError.sourceFileIsNotRegular(sticker.relativePath)
         }
 
-        let expectedExtension = sticker.kind == .staticImage ? "webp" : "apng"
+        let expectedExtension = "webp"
         guard sourceURL.pathExtension.lowercased() == expectedExtension else {
             throw SignalDesktopExportError.unsupportedFileType(
                 path: sticker.relativePath,
@@ -191,18 +195,6 @@ struct SignalDesktopExporter {
         </tbody></table></body></html>
         """
         return Data(html.utf8)
-    }
-
-    private func validateEmoji(_ value: String) throws {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        let characters = Array(trimmed)
-        guard characters.count == 1 else { throw SignalDesktopExportError.invalidEmoji(value) }
-        let scalars = characters[0].unicodeScalars
-        let keycapBases: Set<UInt32> = [0x23, 0x2A, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39]
-        let isKeycap = scalars.contains { $0.value == 0x20E3 } && scalars.contains { keycapBases.contains($0.value) }
-        let isEmoji = scalars.contains { $0.properties.isEmojiPresentation } ||
-            (scalars.contains { $0.properties.isEmoji && !keycapBases.contains($0.value) } && scalars.contains { $0.value == 0xFE0F })
-        guard isKeycap || isEmoji else { throw SignalDesktopExportError.invalidEmoji(value) }
     }
 
     private func htmlEscape(_ value: String) -> String {

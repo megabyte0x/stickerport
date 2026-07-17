@@ -2,7 +2,6 @@ import Foundation
 
 enum StickerKind: String, Codable, Sendable {
     case staticImage
-    case animated
 }
 
 struct SourceSticker: Identifiable, Codable, Equatable, Sendable {

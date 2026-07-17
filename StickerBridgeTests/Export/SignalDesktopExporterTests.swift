@@ -18,10 +18,10 @@ final class SignalDesktopExporterTests: XCTestCase {
 
     func testExportsOrderedZIPEntries() throws {
         let staticURL = try write("static".data(using: .utf8)!, to: "inputs/first.webp")
-        let animatedURL = try write("animated".data(using: .utf8)!, to: "inputs/second.apng")
+        let secondURL = try write("second".data(using: .utf8)!, to: "inputs/second.webp")
         let pack = makePack(stickers: [
             makeSticker(path: relativePath(for: staticURL), emoji: "🙂", kind: .staticImage),
-            makeSticker(path: relativePath(for: animatedURL), emoji: "👋", kind: .animated)
+            makeSticker(path: relativePath(for: secondURL), emoji: "👋", kind: .staticImage)
         ])
 
         let archiveURL = try SignalDesktopExporter(workspaceRoot: workspaceRoot).export(pack)
@@ -29,7 +29,7 @@ final class SignalDesktopExporterTests: XCTestCase {
 
         XCTAssertEqual(archive.map(\.path), [
             "sticker-001.webp",
-            "sticker-002.apng",
+            "sticker-002.webp",
             "pack.json",
             "emoji-manifest.html",
             "README.txt"

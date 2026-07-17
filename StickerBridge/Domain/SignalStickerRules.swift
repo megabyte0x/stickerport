@@ -3,7 +3,6 @@ import Foundation
 enum SignalStickerRuleError: LocalizedError, Equatable {
     case invalidPackCount(Int)
     case oversizedSticker(Int)
-    case animationTooLong(TimeInterval)
     case missingTitle
     case missingAuthor
     case invalidEmoji(String)
@@ -14,8 +13,6 @@ enum SignalStickerRuleError: LocalizedError, Equatable {
             "Signal packs must contain 1–200 stickers; this pack has \(count)."
         case .oversizedSticker(let bytes):
             "Signal stickers must be at most 300 KiB; this file is \(bytes) bytes."
-        case .animationTooLong(let duration):
-            "Signal animations must be at most 3 seconds; this file is \(duration) seconds."
         case .missingTitle:
             "Enter a pack title."
         case .missingAuthor:
@@ -30,7 +27,6 @@ enum SignalStickerRules {
     static let canvasSide = 512
     static let recommendedMargin = 16
     static let maximumStickerBytes = 300 * 1024
-    static let maximumAnimationDuration: TimeInterval = 3
     static let maximumStickerCount = 200
 
     static func validatePackCount(_ count: Int) throws {

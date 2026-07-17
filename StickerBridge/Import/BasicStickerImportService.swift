@@ -4,11 +4,14 @@ import UniformTypeIdentifiers
 
 enum BasicImportFailure: LocalizedError, Equatable {
     case noSupportedFiles
+    case unsupportedStaticImage(String)
 
     var errorDescription: String? {
         switch self {
         case .noSupportedFiles:
             "Choose at least one PNG or WebP sticker file."
+        case .unsupportedStaticImage(let filename):
+            "\(filename) is not a valid static PNG or WebP sticker file."
         }
     }
 }
@@ -17,7 +20,7 @@ struct BasicStickerImportService: Sendable {
     let workspaceRoot: URL
 
     func importFiles(_ urls: [URL], defaultAuthor: String) async throws -> StickerPackDraft {
-        let supportedSources = urls.compactMap { Self.openValidatedSource(at: $0) }
+        var supportedSources: [ValidatedSource] = []
         defer {
             supportedSources.forEach { source in
                 if source.accessedSecurityScope {
@@ -26,8 +29,15 @@ struct BasicStickerImportService: Sendable {
             }
         }
 
-        guard !supportedSources.isEmpty else {
+        guard !urls.isEmpty else {
             throw BasicImportFailure.noSupportedFiles
+        }
+
+        for url in urls {
+            guard let source = Self.openValidatedSource(at: url) else {
+                throw BasicImportFailure.unsupportedStaticImage(url.lastPathComponent)
+            }
+            supportedSources.append(source)
         }
 
         try SignalStickerRules.validatePackCount(supportedSources.count)

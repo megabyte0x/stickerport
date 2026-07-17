@@ -60,14 +60,14 @@ final class BasicStickerImportServiceTests: XCTestCase {
             workspaceRoot: temporaryDirectory.appendingPathComponent("workspace", isDirectory: true)
         )
 
-        for selection in [[], [unsupported]] {
-            do {
-                _ = try await service.importFiles(selection, defaultAuthor: "Ada")
-                XCTFail("Expected no supported files failure")
-            } catch let failure as BasicImportFailure {
-                XCTAssertEqual(failure, .noSupportedFiles)
-            }
-        }
+        await XCTAssertThrowsErrorAsync(
+            try await service.importFiles([], defaultAuthor: "Ada"),
+            equals: .noSupportedFiles
+        )
+        await XCTAssertThrowsErrorAsync(
+            try await service.importFiles([unsupported], defaultAuthor: "Ada"),
+            equals: .unsupportedStaticImage("sticker.gif")
+        )
     }
 
     func testRejectsMalformedAndAnimatedPNGOrWebPFiles() async throws {
@@ -78,14 +78,29 @@ final class BasicStickerImportServiceTests: XCTestCase {
             workspaceRoot: temporaryDirectory.appendingPathComponent("workspace", isDirectory: true)
         )
 
-        for selection in [[malformed], [animatedPNG], [animatedWebP]] {
-            do {
-                _ = try await service.importFiles(selection, defaultAuthor: "Ada")
-                XCTFail("Expected no supported files failure")
-            } catch let failure as BasicImportFailure {
-                XCTAssertEqual(failure, .noSupportedFiles)
-            }
+        for (selection, filename) in [
+            ([malformed], "corrupt.png"),
+            ([animatedPNG], "animated.png"),
+            ([animatedWebP], "animated.webp")
+        ] {
+            await XCTAssertThrowsErrorAsync(
+                try await service.importFiles(selection, defaultAuthor: "Ada"),
+                equals: .unsupportedStaticImage(filename)
+            )
         }
+    }
+
+    func testRejectsAnEntireMixedSelectionWhenAnyFileIsNotStaticMedia() async throws {
+        let valid = try makeSourceFile(named: "valid.png", contents: staticPNGData)
+        let invalid = try makeSourceFile(named: "broken.webp", contents: Data("not WebP".utf8))
+        let workspaceRoot = temporaryDirectory.appendingPathComponent("workspace", isDirectory: true)
+
+        await XCTAssertThrowsErrorAsync(
+            try await BasicStickerImportService(workspaceRoot: workspaceRoot)
+                .importFiles([valid, invalid], defaultAuthor: "Ada"),
+            equals: .unsupportedStaticImage("broken.webp")
+        )
+        XCTAssertFalse(FileManager.default.fileExists(atPath: workspaceRoot.path))
     }
 
     private func makeSourceFile(named name: String, contents: Data) throws -> URL {
@@ -131,5 +146,21 @@ final class BasicStickerImportServiceTests: XCTestCase {
             fatalError("Invalid test fixture")
         }
         return data
+    }
+}
+
+private func XCTAssertThrowsErrorAsync<T>(
+    _ expression: @autoclosure () async throws -> T,
+    equals expected: BasicImportFailure,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) async {
+    do {
+        _ = try await expression()
+        XCTFail("Expected BasicImportFailure", file: file, line: line)
+    } catch let failure as BasicImportFailure {
+        XCTAssertEqual(failure, expected, file: file, line: line)
+    } catch {
+        XCTFail("Unexpected error: \(error)", file: file, line: line)
     }
 }
