@@ -28,8 +28,25 @@ targets:
       - Shared
     info:
       path: StickerBridge/Info.plist
+      properties:
+        CFBundleDisplayName: StickerBridge
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleName: $(PRODUCT_NAME)
+        CFBundlePackageType: APPL
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleURLTypes:
+          - CFBundleURLName: com.megabyte0x.stickerbridge
+            CFBundleURLSchemes:
+              - stickerbridge
+        UILaunchScreen: {}
     entitlements:
       path: StickerBridge/StickerBridge.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.megabyte0x.stickerbridge
     dependencies:
       - package: SDWebImage
       - package: SDWebImageWebPCoder
