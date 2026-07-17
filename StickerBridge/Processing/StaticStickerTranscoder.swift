@@ -14,7 +14,7 @@ struct StaticStickerTranscoder: StickerTranscoding {
             throw TranscodeFailure.unreadableInput(sourceURL)
         }
 
-        let decodingOptions: SDImageCoderOptions = [.decodeFirstFrameOnly: true]
+        let decodingOptions: [SDImageCoderOption: Any] = [.decodeFirstFrameOnly: true]
         let sourceImage = SDImageWebPCoder.shared.decodedImage(
             with: sourceData,
             options: decodingOptions
@@ -44,7 +44,7 @@ struct StaticStickerTranscoder: StickerTranscoding {
                 .appendingPathComponent(UUID().uuidString)
                 .appendingPathExtension("webp")
             do {
-                try webPData.write(to: destinationURL, options: .atomic)
+                try webPData.write(to: destinationURL, options: Data.WritingOptions.atomic)
             } catch {
                 throw TranscodeFailure.unreadableInput(destinationURL)
             }
