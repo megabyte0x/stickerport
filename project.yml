@@ -53,6 +53,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.megabyte0x.stickerbridge.tests
+        GENERATE_INFOPLIST_FILE: YES
   StickerBridgeUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -63,6 +64,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.megabyte0x.stickerbridge.uitests
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   StickerBridge:
     build:

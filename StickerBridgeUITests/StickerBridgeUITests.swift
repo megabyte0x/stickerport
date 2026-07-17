@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class StickerBridgeUITests: XCTestCase {
     func testAppLaunches() {
         let app = XCUIApplication()

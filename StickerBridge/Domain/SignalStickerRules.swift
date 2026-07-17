@@ -63,7 +63,9 @@ enum SignalStickerRules {
         let characters = Array(trimmed)
         guard characters.count == 1,
               characters[0].unicodeScalars.contains(where: {
-                  $0.properties.isEmojiPresentation || $0.properties.generalCategory == .otherSymbol
+                  $0.properties.isEmojiPresentation ||
+                  $0.properties.generalCategory == .otherSymbol ||
+                  $0.value == 0x20E3
               })
         else {
             throw SignalStickerRuleError.invalidEmoji(value)
