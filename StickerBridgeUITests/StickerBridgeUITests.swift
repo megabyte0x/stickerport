@@ -6,7 +6,7 @@ final class StickerBridgeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(
-            app.staticTexts["Prepare sticker files for Signal"].waitForExistence(timeout: 5)
+            app.staticTexts["Prepare for Signal"].waitForExistence(timeout: 5)
         )
     }
 }

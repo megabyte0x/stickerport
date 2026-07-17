@@ -61,12 +61,19 @@ enum SignalStickerRules {
     static func validateEmoji(_ value: String) throws {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         let characters = Array(trimmed)
-        guard characters.count == 1,
-              characters[0].unicodeScalars.contains(where: {
-                  $0.properties.isEmojiPresentation ||
-                  $0.properties.generalCategory == .otherSymbol ||
-                  $0.value == 0x20E3
-              })
+        guard characters.count == 1 else {
+            throw SignalStickerRuleError.invalidEmoji(value)
+        }
+
+        let scalars = characters[0].unicodeScalars
+        let hasEmojiPresentation = scalars.contains { $0.properties.isEmojiPresentation }
+        let hasKeycap = scalars.contains { $0.value == 0x20E3 }
+        let hasEmojiVariationSelector = scalars.contains { $0.value == 0xFE0F }
+        let hasNonKeycapEmoji = scalars.contains {
+            $0.properties.isEmoji && ![0x23, 0x2A, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39].contains($0.value)
+        }
+
+        guard hasEmojiPresentation || hasKeycap || (hasNonKeycapEmoji && hasEmojiVariationSelector)
         else {
             throw SignalStickerRuleError.invalidEmoji(value)
         }
