@@ -67,13 +67,15 @@ enum SignalStickerRules {
 
         let scalars = characters[0].unicodeScalars
         let hasEmojiPresentation = scalars.contains { $0.properties.isEmojiPresentation }
-        let hasKeycap = scalars.contains { $0.value == 0x20E3 }
+        let keycapBaseScalars: Set<UInt32> = [0x23, 0x2A, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39]
+        let hasValidKeycap = scalars.contains { $0.value == 0x20E3 } &&
+            scalars.contains { keycapBaseScalars.contains($0.value) }
         let hasEmojiVariationSelector = scalars.contains { $0.value == 0xFE0F }
         let hasNonKeycapEmoji = scalars.contains {
-            $0.properties.isEmoji && ![0x23, 0x2A, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39].contains($0.value)
+            $0.properties.isEmoji && !keycapBaseScalars.contains($0.value)
         }
 
-        guard hasEmojiPresentation || hasKeycap || (hasNonKeycapEmoji && hasEmojiVariationSelector)
+        guard hasEmojiPresentation || hasValidKeycap || (hasNonKeycapEmoji && hasEmojiVariationSelector)
         else {
             throw SignalStickerRuleError.invalidEmoji(value)
         }

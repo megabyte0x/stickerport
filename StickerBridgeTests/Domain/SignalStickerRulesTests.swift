@@ -29,6 +29,8 @@ final class SignalStickerRulesTests: XCTestCase {
         XCTAssertThrowsError(try SignalStickerRules.validateEmoji("hello"))
         XCTAssertThrowsError(try SignalStickerRules.validateEmoji("𝄞"))
         XCTAssertThrowsError(try SignalStickerRules.validateEmoji("1"))
+        XCTAssertThrowsError(try SignalStickerRules.validateEmoji("A⃣"))
+        XCTAssertThrowsError(try SignalStickerRules.validateEmoji("⃣"))
         XCTAssertThrowsError(try SignalStickerRules.validateEmoji("🙂😂"))
     }
 }
