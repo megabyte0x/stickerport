@@ -25,7 +25,7 @@ final class SignalDesktopExporterTests: XCTestCase {
         ])
 
         let archiveURL = try SignalDesktopExporter(workspaceRoot: workspaceRoot).export(pack)
-        let archive = try XCTUnwrap(Archive(url: archiveURL, accessMode: .read))
+        let archive = try Archive(url: archiveURL, accessMode: .read)
 
         XCTAssertEqual(archive.map(\.path), [
             "sticker-001.webp",
