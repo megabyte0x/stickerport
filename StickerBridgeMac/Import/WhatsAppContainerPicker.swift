@@ -38,51 +38,73 @@ struct WhatsAppContainerPicker: WhatsAppFolderPicking {
         guard let path = try lookup(userID) else {
             throw LoginHomeDirectoryError.missingAccount(userID)
         }
-        guard path.hasPrefix("/") else {
+        guard path.hasPrefix("/"),
+              !path.unicodeScalars.contains(
+                  where: CharacterSet.controlCharacters.contains
+              ) else {
             throw LoginHomeDirectoryError.invalidPath(path)
         }
-        return URL(fileURLWithPath: path, isDirectory: true)
+        let homeDirectory = URL(
+            fileURLWithPath: path,
+            isDirectory: true
+        ).standardizedFileURL
+        guard homeDirectory.path == path else {
+            throw LoginHomeDirectoryError.invalidPath(path)
+        }
+        return homeDirectory
     }
 
     nonisolated static func posixLoginHomeDirectory(
         forUserID userID: uid_t
     ) throws -> String? {
-        var bufferSize = max(
+        let maximumBufferSize = 1_048_576
+        let configuredBufferSize = max(
             Int(sysconf(_SC_GETPW_R_SIZE_MAX)),
             16_384
         )
-        let maximumBufferSize = 1_048_576
-
-        while bufferSize <= maximumBufferSize {
-            var buffer = [CChar](repeating: 0, count: bufferSize)
-            let lookup = buffer.withUnsafeMutableBufferPointer {
-                buffer -> (Int32, String?) in
-                var account = passwd()
-                var accountPointer: UnsafeMutablePointer<passwd>?
-                let result = getpwuid_r(
-                    userID,
-                    &account,
-                    buffer.baseAddress,
-                    buffer.count,
-                    &accountPointer
+        return try posixLoginHomeDirectory(
+            forUserID: userID,
+            initialBufferSize: min(configuredBufferSize, maximumBufferSize),
+            maximumBufferSize: maximumBufferSize,
+            lookingUpAccount: { userID, bufferSize in
+                lookupPOSIXAccount(
+                    forUserID: userID,
+                    bufferSize: bufferSize
                 )
-                guard result == 0,
-                      let homeDirectory = accountPointer?.pointee.pw_dir else {
-                    return (result, nil)
-                }
-                return (result, String(cString: homeDirectory))
             }
+        )
+    }
 
-            if lookup.0 == ERANGE {
-                bufferSize *= 2
-                continue
+    nonisolated static func posixLoginHomeDirectory(
+        forUserID userID: uid_t,
+        initialBufferSize: Int,
+        maximumBufferSize: Int,
+        lookingUpAccount lookup: (uid_t, Int) -> POSIXHomeDirectoryLookupResult
+    ) throws -> String? {
+        precondition(maximumBufferSize > 0)
+        var bufferSize = min(
+            max(initialBufferSize, 1),
+            maximumBufferSize
+        )
+
+        while true {
+            let result = lookup(userID, bufferSize)
+            if result.status != ERANGE {
+                guard result.status == 0 else {
+                    throw LoginHomeDirectoryError.lookupFailed(result.status)
+                }
+                return result.homeDirectoryPath
             }
-            guard lookup.0 == 0 else {
-                throw LoginHomeDirectoryError.lookupFailed(lookup.0)
+            guard bufferSize < maximumBufferSize else {
+                throw LoginHomeDirectoryError.lookupFailed(ERANGE)
             }
-            return lookup.1
+            bufferSize = min(
+                bufferSize > maximumBufferSize / 2
+                    ? maximumBufferSize
+                    : bufferSize * 2,
+                maximumBufferSize
+            )
         }
-        throw LoginHomeDirectoryError.lookupFailed(ERANGE)
     }
 
     func chooseWhatsAppFolder() -> URL? {
@@ -115,6 +137,35 @@ struct WhatsAppContainerPicker: WhatsAppFolderPicking {
         url.resolvingSymlinksInPath().standardizedFileURL
     }
 
+    private nonisolated static func lookupPOSIXAccount(
+        forUserID userID: uid_t,
+        bufferSize: Int
+    ) -> POSIXHomeDirectoryLookupResult {
+        var buffer = [CChar](repeating: 0, count: bufferSize)
+        return buffer.withUnsafeMutableBufferPointer { buffer in
+            var account = passwd()
+            var accountPointer: UnsafeMutablePointer<passwd>?
+            let status = getpwuid_r(
+                userID,
+                &account,
+                buffer.baseAddress,
+                buffer.count,
+                &accountPointer
+            )
+            guard status == 0,
+                  let homeDirectory = accountPointer?.pointee.pw_dir else {
+                return POSIXHomeDirectoryLookupResult(
+                    status: status,
+                    homeDirectoryPath: nil
+                )
+            }
+            return POSIXHomeDirectoryLookupResult(
+                status: status,
+                homeDirectoryPath: String(cString: homeDirectory)
+            )
+        }
+    }
+
     /// Reads the macOS login account's record, not this app's sandbox Data home.
     private nonisolated static var loginUserHomeDirectory: URL {
         do {
@@ -131,6 +182,11 @@ struct WhatsAppContainerPicker: WhatsAppFolderPicking {
             )
         }
     }
+}
+
+struct POSIXHomeDirectoryLookupResult {
+    let status: Int32
+    let homeDirectoryPath: String?
 }
 
 enum LoginHomeDirectoryError: Error, Equatable, LocalizedError {

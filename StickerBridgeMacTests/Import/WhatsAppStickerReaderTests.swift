@@ -2,22 +2,20 @@ import XCTest
 @testable import StickerBridgeMac
 
 final class WhatsAppStickerReaderTests: XCTestCase {
-    func testDefaultCanonicalContainerUsesPOSIXLoginAccountHome() throws {
-        let loginHomePath = try XCTUnwrap(
-            WhatsAppContainerPicker.posixLoginHomeDirectory(
-                forUserID: getuid()
+    func testCanonicalContainerUsesSyntheticPOSIXLoginAccountHome() throws {
+        let loginHome = try WhatsAppContainerPicker
+            .resolvedLoginUserHomeDirectory(
+                forUserID: 501,
+                lookingUpHomeDirectory: { _ in "/Users/stickerbridge-fixture" }
             )
-        )
         let expected = WhatsAppContainerPicker.canonicalContainerURL(
-            forLoginUserHomeDirectory: URL(
-                fileURLWithPath: loginHomePath,
-                isDirectory: true
-            )
+            forLoginUserHomeDirectory: loginHome
         )
 
         XCTAssertEqual(
-            WhatsAppContainerPicker.canonicalContainerURL.path,
-            expected.path
+            expected.path,
+            "/Users/stickerbridge-fixture/Library/Group Containers/" +
+                "group.net.whatsapp.WhatsApp.shared"
         )
     }
 
@@ -47,6 +45,53 @@ final class WhatsAppStickerReaderTests: XCTestCase {
                 .invalidPath("Users/stickerbridge")
             )
         }
+    }
+
+    func testPOSIXHomeResolverRejectsMalformedAbsoluteHomePaths() {
+        let malformedPaths = [
+            "//Users/stickerbridge",
+            "/Users/stickerbridge/../other",
+            "/Users/stickerbridge\u{0001}"
+        ]
+
+        for path in malformedPaths {
+            XCTAssertThrowsError(
+                try WhatsAppContainerPicker.resolvedLoginUserHomeDirectory(
+                    forUserID: 501,
+                    lookingUpHomeDirectory: { _ in path }
+                )
+            ) {
+                XCTAssertEqual(
+                    $0 as? LoginHomeDirectoryError,
+                    .invalidPath(path)
+                )
+            }
+        }
+    }
+
+    func testPOSIXLookupRetriesAtMaximumBufferBeforeFailing() {
+        var requestedBufferSizes: [Int] = []
+
+        XCTAssertThrowsError(
+            try WhatsAppContainerPicker.posixLoginHomeDirectory(
+                forUserID: 501,
+                initialBufferSize: 700_000,
+                maximumBufferSize: 1_048_576,
+                lookingUpAccount: { _, bufferSize in
+                    requestedBufferSizes.append(bufferSize)
+                    return POSIXHomeDirectoryLookupResult(
+                        status: ERANGE,
+                        homeDirectoryPath: nil
+                    )
+                }
+            )
+        ) {
+            XCTAssertEqual(
+                $0 as? LoginHomeDirectoryError,
+                .lookupFailed(ERANGE)
+            )
+        }
+        XCTAssertEqual(requestedBufferSizes, [700_000, 1_048_576])
     }
 
     func testCanonicalContainerUsesLoginHomeRatherThanSandboxDataHome() {
