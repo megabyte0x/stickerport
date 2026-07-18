@@ -2,6 +2,40 @@ import XCTest
 @testable import StickerBridgeMac
 
 final class WhatsAppStickerReaderTests: XCTestCase {
+    func testDefaultCanonicalContainerUsesLoginAccountHome() throws {
+        let loginHomePath = try XCTUnwrap(
+            NSHomeDirectoryForUser(NSUserName())
+        )
+        let expected = WhatsAppContainerPicker.canonicalContainerURL(
+            forLoginUserHomeDirectory: URL(
+                fileURLWithPath: loginHomePath,
+                isDirectory: true
+            )
+        )
+
+        XCTAssertEqual(
+            WhatsAppContainerPicker.canonicalContainerURL.path,
+            expected.path
+        )
+    }
+
+    func testCanonicalContainerUsesLoginHomeRatherThanSandboxDataHome() {
+        let loginHome = URL(
+            fileURLWithPath: "/Users/stickerbridge-fixture",
+            isDirectory: true
+        )
+
+        let container = WhatsAppContainerPicker.canonicalContainerURL(
+            forLoginUserHomeDirectory: loginHome
+        )
+
+        XCTAssertEqual(
+            container.path,
+            "/Users/stickerbridge-fixture/Library/Group Containers/" +
+                "group.net.whatsapp.WhatsApp.shared"
+        )
+    }
+
     func testLoadsOnlyInstalledPackRowsWithLocalMedia() throws {
         let fixture = try WhatsAppSQLiteFixture.make()
         defer { try? FileManager.default.removeItem(at: fixture.rootURL) }

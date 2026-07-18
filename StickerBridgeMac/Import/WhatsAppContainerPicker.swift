@@ -9,7 +9,15 @@ protocol WhatsAppFolderPicking {
 @MainActor
 struct WhatsAppContainerPicker: WhatsAppFolderPicking {
     nonisolated static var canonicalContainerURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
+        canonicalContainerURL(
+            forLoginUserHomeDirectory: loginUserHomeDirectory
+        )
+    }
+
+    nonisolated static func canonicalContainerURL(
+        forLoginUserHomeDirectory loginUserHomeDirectory: URL
+    ) -> URL {
+        loginUserHomeDirectory
             .appendingPathComponent("Library", isDirectory: true)
             .appendingPathComponent("Group Containers", isDirectory: true)
             .appendingPathComponent(
@@ -50,5 +58,13 @@ struct WhatsAppContainerPicker: WhatsAppFolderPicking {
 
     private nonisolated static func canonicalized(_ url: URL) -> URL {
         url.resolvingSymlinksInPath().standardizedFileURL
+    }
+
+    /// Resolves the macOS login account's home, not this app's sandbox Data home.
+    private nonisolated static var loginUserHomeDirectory: URL {
+        guard let path = NSHomeDirectoryForUser(NSUserName()) else {
+            preconditionFailure("Unable to determine the login user's home directory.")
+        }
+        return URL(fileURLWithPath: path, isDirectory: true)
     }
 }
