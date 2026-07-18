@@ -48,4 +48,30 @@ final class WhatsAppStickerReaderTests: XCTestCase {
         XCTAssertEqual(packs[0].stickers.count, 1)
         XCTAssertEqual(packs[0].stickers[0].emoji, "😂")
     }
+
+    func testSymlinkedStickerDirectoryOutsideContainerFailsClosed() throws {
+        let fixture = try WhatsAppSQLiteFixture.make()
+        let externalDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer {
+            try? FileManager.default.removeItem(at: fixture.rootURL)
+            try? FileManager.default.removeItem(at: externalDirectory)
+        }
+        try FileManager.default.createDirectory(
+            at: externalDirectory,
+            withIntermediateDirectories: true
+        )
+        let stickersURL = fixture.rootURL.appendingPathComponent("stickers")
+        try FileManager.default.removeItem(at: stickersURL)
+        try FileManager.default.createSymbolicLink(
+            at: stickersURL,
+            withDestinationURL: externalDirectory
+        )
+
+        XCTAssertThrowsError(
+            try WhatsAppStickerReader().load(from: fixture.rootURL)
+        ) {
+            XCTAssertEqual($0 as? WhatsAppMVPError, .missingStickerDirectory)
+        }
+    }
 }

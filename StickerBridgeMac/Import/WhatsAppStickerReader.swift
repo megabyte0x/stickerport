@@ -34,6 +34,12 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
         ), isDirectory.boolValue else {
             throw WhatsAppMVPError.missingStickerDirectory
         }
+        let resolvedStickersURL = stickersURL
+            .resolvingSymlinksInPath()
+            .standardizedFileURL
+        guard isDescendant(resolvedStickersURL, of: root) else {
+            throw WhatsAppMVPError.missingStickerDirectory
+        }
 
         let database = try ReadOnlySQLite(url: databaseURL)
         try validateSchema(database)
@@ -85,7 +91,7 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
         for row in rows {
             guard let mediaURL = safeStickerURL(
                 relativePath: row.relativePath,
-                stickersURL: stickersURL
+                stickersURL: resolvedStickersURL
             ), let data = try? Data(
                 contentsOf: mediaURL,
                 options: [.mappedIfSafe]
@@ -174,6 +180,13 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
             forKeys: [.isRegularFileKey]
         )
         return values?.isRegularFile == true ? candidate : nil
+    }
+
+    private func isDescendant(_ url: URL, of root: URL) -> Bool {
+        let rootPath = root.path.hasSuffix("/")
+            ? root.path
+            : root.path + "/"
+        return url.path.hasPrefix(rootPath)
     }
 
     private func validateSchema(_ database: ReadOnlySQLite) throws {
