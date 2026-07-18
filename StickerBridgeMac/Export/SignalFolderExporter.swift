@@ -117,10 +117,7 @@ struct SignalFolderExporter: SignalFolderExporting {
         guard sticker.data.count <= Self.maximumStickerBytes else {
             throw SignalFolderExportError.oversized(sticker.relativePath)
         }
-        if let animated = SDImageWebPCoder(
-            animatedImageData: sticker.data,
-            options: nil
-        ), animated.animatedImageFrameCount > 1 {
+        if hasWebPAnimationFeature(sticker.data) {
             throw SignalFolderExportError.animatedUnsupported(
                 sticker.relativePath
             )
@@ -136,6 +133,47 @@ struct SignalFolderExporter: SignalFolderExporting {
             throw SignalFolderExportError.wrongSize(sticker.relativePath)
         }
         return sticker.data
+    }
+
+    private func hasWebPAnimationFeature(_ data: Data) -> Bool {
+        let bytes = [UInt8](data)
+        guard bytes.count >= 12,
+              String(bytes: bytes[0..<4], encoding: .ascii) == "RIFF",
+              String(bytes: bytes[8..<12], encoding: .ascii) == "WEBP" else {
+            return false
+        }
+
+        var offset = 12
+        while offset <= bytes.count - 8 {
+            let chunkName = String(
+                bytes: bytes[offset..<(offset + 4)],
+                encoding: .ascii
+            )
+            let chunkSize = Int(bytes[offset + 4])
+                | Int(bytes[offset + 5]) << 8
+                | Int(bytes[offset + 6]) << 16
+                | Int(bytes[offset + 7]) << 24
+            let payloadStart = offset + 8
+            guard chunkSize <= bytes.count - payloadStart else {
+                return false
+            }
+
+            if chunkName == "ANIM" || chunkName == "ANMF" {
+                return true
+            }
+            if chunkName == "VP8X",
+               chunkSize > 0,
+               bytes[payloadStart] & 0x02 != 0 {
+                return true
+            }
+
+            let paddedSize = chunkSize + (chunkSize & 1)
+            guard paddedSize <= bytes.count - payloadStart else {
+                return false
+            }
+            offset = payloadStart + paddedSize
+        }
+        return false
     }
 
     private func uniqueOutputURL(parent: URL, title: String) -> URL {

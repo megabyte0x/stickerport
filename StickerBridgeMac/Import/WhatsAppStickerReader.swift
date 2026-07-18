@@ -6,6 +6,15 @@ protocol WhatsAppStickerReading: Sendable {
 }
 
 struct WhatsAppStickerReader: WhatsAppStickerReading {
+    private let expectedContainerURL: URL
+
+    init(
+        expectedContainerURL: URL =
+            WhatsAppContainerPicker.canonicalContainerURL
+    ) {
+        self.expectedContainerURL = expectedContainerURL
+    }
+
     func load(from containerURL: URL) throws -> [MacWhatsAppPack] {
         let started = containerURL.startAccessingSecurityScopedResource()
         defer {
@@ -16,6 +25,14 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
         let root = containerURL
             .resolvingSymlinksInPath()
             .standardizedFileURL
+        let expectedRoot = expectedContainerURL
+            .resolvingSymlinksInPath()
+            .standardizedFileURL
+        guard root.path == expectedRoot.path else {
+            throw WhatsAppMVPError.unexpectedContainer(
+                expectedPath: expectedRoot.path
+            )
+        }
         let databaseURL = root.appendingPathComponent("Sticker.sqlite")
         let stickersURL = root.appendingPathComponent(
             "stickers",
@@ -46,15 +63,6 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
         try database.execute("BEGIN DEFERRED TRANSACTION")
         defer { try? database.execute("ROLLBACK") }
 
-        let entities: [Int64] = try database.rows(
-            "SELECT Z_ENT FROM Z_PRIMARYKEY WHERE Z_NAME = 'WACDStickerPack' LIMIT 1"
-        ) {
-            ReadOnlySQLite.int64($0, 0)
-        }
-        guard let installedEntity = entities.first else {
-            throw WhatsAppMVPError.missingInstalledPackEntity
-        }
-
         let rows: [Row] = try database.rows(
             """
             SELECT
@@ -72,7 +80,11 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
                      COALESCE(s.ZSORT, 0), s.Z_PK
             """,
             bind: {
-                sqlite3_bind_int64($0, 1, installedEntity)
+                sqlite3_bind_int64(
+                    $0,
+                    1,
+                    VerifiedWhatsAppSchemaV26_28_22.installedPackEntity
+                )
             }
         ) {
             Row(
@@ -190,49 +202,142 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
     }
 
     private func validateSchema(_ database: ReadOnlySQLite) throws {
-        let required: [String: Set<String>] = [
-            "Z_PRIMARYKEY": ["Z_ENT", "Z_NAME"],
-            "ZWACDABSTRACTSTICKERPACK": [
-                "Z_PK", "Z_ENT", "ZORDER", "ZNAME", "ZPUBLISHER"
-            ],
-            "ZWACDSTICKER": [
-                "Z_PK", "ZSTICKERPACK", "ZSORT",
-                "ZRELATIVEIMAGEPATH", "ZEMOJIS"
-            ]
-        ]
         let tables = Set(try database.rows(
             "SELECT name FROM sqlite_master WHERE type = 'table'"
         ) {
             ReadOnlySQLite.text($0, 0) ?? ""
         })
-        for table in required.keys.sorted() where !tables.contains(table) {
+        let required =
+            VerifiedWhatsAppSchemaV26_28_22.requiredColumnAffinities
+        for table in required.keys.sorted()
+        where !tables.contains(table) {
             throw WhatsAppMVPError.missingTable(table)
         }
         for (table, columns) in required {
-            let present = Set(try database.rows(
+            let present = Dictionary(uniqueKeysWithValues: try database.rows(
                 "PRAGMA table_info(\(table))"
             ) {
-                ReadOnlySQLite.text($0, 1) ?? ""
-            })
-            for column in columns.sorted()
-            where !present.contains(column) {
-                throw WhatsAppMVPError.missingColumn(
-                    table: table,
-                    column: column
+                (
+                    ReadOnlySQLite.text($0, 1) ?? "",
+                    SQLiteAffinity(
+                        declaredType: ReadOnlySQLite.text($0, 2) ?? ""
+                    )
                 )
+            })
+            for (column, expectedAffinity) in columns.sorted(
+                by: { $0.key < $1.key }
+            ) {
+                guard let actualAffinity = present[column] else {
+                    throw WhatsAppMVPError.missingColumn(
+                        table: table,
+                        column: column
+                    )
+                }
+                guard actualAffinity == expectedAffinity else {
+                    throw WhatsAppMVPError.unsupportedSchema(
+                        "\(table).\(column) must have "
+                            + "\(expectedAffinity.rawValue) affinity."
+                    )
+                }
             }
         }
+
+        let installedPackEntities: [Int64] = try database.rows(
+            """
+            SELECT Z_ENT
+            FROM Z_PRIMARYKEY
+            WHERE Z_NAME = 'WACDStickerPack'
+            ORDER BY Z_ENT
+            """
+        ) {
+            ReadOnlySQLite.int64($0, 0)
+        }
+        guard installedPackEntities == [
+            VerifiedWhatsAppSchemaV26_28_22.installedPackEntity
+        ] else {
+            throw WhatsAppMVPError.unsupportedSchema(
+                "WACDStickerPack must map to Core Data entity 2."
+            )
+        }
     }
+}
+
+private enum SQLiteAffinity: String {
+    case integer = "INTEGER"
+    case text = "TEXT"
+    case blob = "BLOB"
+    case real = "REAL"
+    case numeric = "NUMERIC"
+
+    init(declaredType: String) {
+        let type = declaredType.uppercased()
+        if type.contains("INT") {
+            self = .integer
+        } else if type.contains("CHAR")
+                    || type.contains("CLOB")
+                    || type.contains("TEXT") {
+            self = .text
+        } else if type.isEmpty || type.contains("BLOB") {
+            self = .blob
+        } else if type.contains("REAL")
+                    || type.contains("FLOA")
+                    || type.contains("DOUB") {
+            self = .real
+        } else {
+            self = .numeric
+        }
+    }
+}
+
+private enum VerifiedWhatsAppSchemaV26_28_22 {
+    static let installedPackEntity: Int64 = 2
+
+    static let requiredColumnAffinities:
+        [String: [String: SQLiteAffinity]] = [
+            "Z_PRIMARYKEY": [
+                "Z_ENT": .integer,
+                "Z_NAME": .text
+            ],
+            "ZWACDABSTRACTSTICKERPACK": [
+                "Z_PK": .integer,
+                "Z_ENT": .integer,
+                "ZORDER": .integer,
+                "ZNAME": .text,
+                "ZPUBLISHER": .text
+            ],
+            "ZWACDSTICKER": [
+                "Z_PK": .integer,
+                "ZSTICKERPACK": .integer,
+                "ZSORT": .integer,
+                "ZRELATIVEIMAGEPATH": .text,
+                "ZEMOJIS": .text
+            ]
+        ]
 }
 
 private final class ReadOnlySQLite {
     private var handle: OpaquePointer?
 
     init(url: URL) throws {
+        var components = URLComponents(
+            url: url,
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: "mode", value: "ro"),
+            URLQueryItem(name: "immutable", value: "1")
+        ]
+        guard let uri = components?.string else {
+            throw WhatsAppMVPError.sqlite(
+                "The database path could not be encoded safely."
+            )
+        }
         let result = sqlite3_open_v2(
-            url.path,
+            uri,
             &handle,
-            SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX,
+            SQLITE_OPEN_READONLY
+                | SQLITE_OPEN_URI
+                | SQLITE_OPEN_FULLMUTEX,
             nil
         )
         guard result == SQLITE_OK, let handle else {

@@ -62,6 +62,7 @@ struct MacRootView: View {
                         .tag($0.id)
                 }
             }
+            .disabled(store.isExporting)
 
             HStack {
                 Button("Select All") {
@@ -74,6 +75,7 @@ struct MacRootView: View {
                 Text("\(store.selectedStickerIDs.count) selected")
                     .foregroundStyle(.secondary)
             }
+            .disabled(store.isExporting)
 
             List(pack.stickers) { sticker in
                 Toggle(
@@ -103,6 +105,7 @@ struct MacRootView: View {
                 }
             }
             .frame(minHeight: 260)
+            .disabled(store.isExporting)
 
             HStack {
                 Button("Create Signal-ready Folder") {

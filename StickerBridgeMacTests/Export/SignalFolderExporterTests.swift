@@ -110,6 +110,59 @@ final class SignalFolderExporterTests: XCTestCase {
         }
     }
 
+    func testRejectsOneFrameAnimatedWebPContainer() throws {
+        let destination = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let twoFrameAnimated = try XCTUnwrap(
+            SDImageWebPCoder.shared.encodedData(
+                with: [
+                    SDImageFrame(
+                        image: makeImage(color: .purple, side: 512),
+                        duration: 0.2
+                    ),
+                    SDImageFrame(
+                        image: makeImage(color: .orange, side: 512),
+                        duration: 0.2
+                    )
+                ],
+                loopCount: 0,
+                format: .webP,
+                options: [.encodeCompressionQuality: 0.8]
+            )
+        )
+        let animated = try oneFrameAnimatedWebP(
+            from: twoFrameAnimated
+        )
+        XCTAssertTrue(hasRIFFChunk("ANIM", in: animated))
+        XCTAssertEqual(riffChunkCount("ANMF", in: animated), 1)
+        let sticker = MacWhatsAppSticker(
+            id: 100,
+            order: 0,
+            relativePath: "pack/one-frame-animated.webp",
+            emoji: "🙂",
+            data: animated
+        )
+        let pack = MacWhatsAppPack(
+            id: 10,
+            title: "One Frame Animated",
+            author: "Fixture",
+            stickers: [sticker]
+        )
+
+        XCTAssertThrowsError(
+            try SignalFolderExporter().export(
+                pack: pack,
+                selectedStickerIDs: [sticker.id],
+                to: destination
+            )
+        ) {
+            XCTAssertEqual(
+                $0 as? SignalFolderExportError,
+                .animatedUnsupported("pack/one-frame-animated.webp")
+            )
+        }
+    }
+
     func testRejectsMoreThanSignalByteLimit() throws {
         let destination = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: destination) }
@@ -195,5 +248,88 @@ final class SignalFolderExporterTests: XCTestCase {
         let image = NSImage(size: NSSize(width: side, height: side))
         image.addRepresentation(bitmap)
         return image
+    }
+
+    private func hasRIFFChunk(_ name: String, in data: Data) -> Bool {
+        riffChunkCount(name, in: data) > 0
+    }
+
+    private func riffChunkCount(
+        _ name: String,
+        in data: Data
+    ) -> Int {
+        let bytes = [UInt8](data)
+        guard bytes.count >= 12 else {
+            return 0
+        }
+        var offset = 12
+        var count = 0
+        while offset <= bytes.count - 8 {
+            let chunkName = String(
+                bytes: bytes[offset..<(offset + 4)],
+                encoding: .ascii
+            )
+            let size = Int(bytes[offset + 4])
+                | Int(bytes[offset + 5]) << 8
+                | Int(bytes[offset + 6]) << 16
+                | Int(bytes[offset + 7]) << 24
+            if chunkName == name {
+                count += 1
+            }
+            let payloadStart = offset + 8
+            guard size <= bytes.count - payloadStart else {
+                return count
+            }
+            offset = payloadStart + size + (size & 1)
+        }
+        return count
+    }
+
+    private func oneFrameAnimatedWebP(
+        from data: Data
+    ) throws -> Data {
+        let bytes = [UInt8](data)
+        guard bytes.count >= 12,
+              String(bytes: bytes[0..<4], encoding: .ascii) == "RIFF",
+              String(bytes: bytes[8..<12], encoding: .ascii) == "WEBP" else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        var output = Array(bytes[0..<12])
+        var offset = 12
+        var keptAnimationFrame = false
+        while offset <= bytes.count - 8 {
+            let chunkName = String(
+                bytes: bytes[offset..<(offset + 4)],
+                encoding: .ascii
+            )
+            let size = Int(bytes[offset + 4])
+                | Int(bytes[offset + 5]) << 8
+                | Int(bytes[offset + 6]) << 16
+                | Int(bytes[offset + 7]) << 24
+            let payloadStart = offset + 8
+            guard size <= bytes.count - payloadStart else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            let end = payloadStart + size + (size & 1)
+            guard end <= bytes.count else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            if chunkName != "ANMF" || !keptAnimationFrame {
+                output.append(contentsOf: bytes[offset..<end])
+                if chunkName == "ANMF" {
+                    keptAnimationFrame = true
+                }
+            }
+            offset = end
+        }
+        guard keptAnimationFrame else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        let riffSize = UInt32(output.count - 8)
+        output[4] = UInt8(truncatingIfNeeded: riffSize)
+        output[5] = UInt8(truncatingIfNeeded: riffSize >> 8)
+        output[6] = UInt8(truncatingIfNeeded: riffSize >> 16)
+        output[7] = UInt8(truncatingIfNeeded: riffSize >> 24)
+        return Data(output)
     }
 }

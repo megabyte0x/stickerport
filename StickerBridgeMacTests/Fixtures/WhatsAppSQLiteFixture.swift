@@ -7,7 +7,10 @@ struct WhatsAppSQLiteFixture {
 
     static func make(
         includeStickerTable: Bool = true,
-        firstRelativePath: String = "pack/one.webp"
+        firstRelativePath: String = "pack/one.webp",
+        installedPackEntity: Int64 = 2,
+        relativeImagePathDeclaredType: String = "VARCHAR",
+        includeSQLiteSidecars: Bool = false
     ) throws -> WhatsAppSQLiteFixture {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -37,7 +40,8 @@ struct WhatsAppSQLiteFixture {
           Z_ENT INTEGER PRIMARY KEY,
           Z_NAME VARCHAR
         );
-        INSERT INTO Z_PRIMARYKEY VALUES (2, 'WACDStickerPack');
+        INSERT INTO Z_PRIMARYKEY
+          VALUES (\(installedPackEntity), 'WACDStickerPack');
 
         CREATE TABLE ZWACDABSTRACTSTICKERPACK (
           Z_PK INTEGER PRIMARY KEY,
@@ -60,14 +64,33 @@ struct WhatsAppSQLiteFixture {
               Z_PK INTEGER PRIMARY KEY,
               ZSTICKERPACK INTEGER,
               ZSORT INTEGER,
-              ZRELATIVEIMAGEPATH VARCHAR,
-              ZEMOJIS VARCHAR
+              ZRELATIVEIMAGEPATH \(relativeImagePathDeclaredType),
+              ZEMOJIS VARCHAR,
+              ZACCESSIBILITYTEXT VARCHAR,
+              ZWIDTH INTEGER,
+              ZHEIGHT INTEGER,
+              ZMIMETYPE VARCHAR
             );
-            INSERT INTO ZWACDSTICKER
+            INSERT INTO ZWACDSTICKER (
+              Z_PK, ZSTICKERPACK, ZSORT,
+              ZRELATIVEIMAGEPATH, ZEMOJIS
+            )
               VALUES (101, 10, 1, 'pack/two.webp', '😂 😆');
-            INSERT INTO ZWACDSTICKER
+            INSERT INTO ZWACDSTICKER (
+              Z_PK, ZSTICKERPACK, ZSORT,
+              ZRELATIVEIMAGEPATH, ZEMOJIS
+            )
               VALUES (100, 10, 0, '\(escapedPath)', '☕ 🙂');
             """)
+        }
+
+        if includeSQLiteSidecars {
+            try Data("synthetic-wal-sidecar".utf8).write(
+                to: URL(fileURLWithPath: databaseURL.path + "-wal")
+            )
+            try Data("synthetic-shm-sidecar".utf8).write(
+                to: URL(fileURLWithPath: databaseURL.path + "-shm")
+            )
         }
 
         return WhatsAppSQLiteFixture(

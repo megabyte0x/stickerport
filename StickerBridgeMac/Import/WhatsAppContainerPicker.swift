@@ -8,6 +8,20 @@ protocol WhatsAppFolderPicking {
 
 @MainActor
 struct WhatsAppContainerPicker: WhatsAppFolderPicking {
+    nonisolated static var canonicalContainerURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library", isDirectory: true)
+            .appendingPathComponent("Group Containers", isDirectory: true)
+            .appendingPathComponent(
+                "group.net.whatsapp.WhatsApp.shared",
+                isDirectory: true
+            )
+    }
+
+    nonisolated static func isCanonicalContainer(_ url: URL) -> Bool {
+        canonicalized(url).path == canonicalized(canonicalContainerURL).path
+    }
+
     func chooseWhatsAppFolder() -> URL? {
         let panel = NSOpenPanel()
         panel.title = "Choose WhatsApp Sticker Data"
@@ -17,13 +31,24 @@ struct WhatsAppContainerPicker: WhatsAppFolderPicking {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = false
         panel.allowsMultipleSelection = false
-        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library", isDirectory: true)
-            .appendingPathComponent("Group Containers", isDirectory: true)
-            .appendingPathComponent(
-                "group.net.whatsapp.WhatsApp.shared",
-                isDirectory: true
-            )
-        return panel.runModal() == .OK ? panel.url : nil
+        panel.directoryURL = Self.canonicalContainerURL
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return nil
+        }
+        guard Self.isCanonicalContainer(url) else {
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = "Choose the WhatsApp shared container"
+            alert.informativeText = WhatsAppMVPError.unexpectedContainer(
+                expectedPath: Self.canonicalContainerURL.path
+            ).localizedDescription
+            alert.runModal()
+            return nil
+        }
+        return url
+    }
+
+    private nonisolated static func canonicalized(_ url: URL) -> URL {
+        url.resolvingSymlinksInPath().standardizedFileURL
     }
 }
