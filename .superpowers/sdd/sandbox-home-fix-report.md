@@ -40,3 +40,24 @@ path construction. A parent-owned live GUI re-test is still needed to confirm
 that the signed app's open panel starts at the real Group Containers root and
 accepts that exact selection. This change does not open the picker or access
 WhatsApp files.
+
+## POSIX follow-up
+
+The subsequent live GUI re-test disproved the Foundation assumption: the
+signed sandboxed app still produced its container `Data` home. The production
+source now uses `getpwuid_r(getuid())` from Darwin and takes `pw_dir` from the
+login account record. Its buffer starts at `_SC_GETPW_R_SIZE_MAX` (with a safe
+minimum), retries boundedly on `ERANGE`, and copies the home path before the
+buffer is released.
+
+`resolvedLoginUserHomeDirectory` is an injectable seam that rejects a missing
+account record or non-absolute home. The exact canonical container comparison,
+security-scoped access, and reader's fail-closed checks remain unchanged.
+
+Test command remained the focused macOS importer command above. Result:
+`TEST SUCCEEDED`; 15 tests passed, including the POSIX default-root assertion
+and missing/relative-account-home failures. No WhatsApp files or live picker
+were accessed.
+
+Source/test commit: `415b7db fix: use POSIX home for WhatsApp container`.
+Remaining acceptance is the parent-owned live signed-app picker re-test.
