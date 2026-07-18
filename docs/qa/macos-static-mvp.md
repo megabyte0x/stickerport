@@ -18,6 +18,12 @@ Record these values in the local test notes:
 - [ ] The app opens to one plain screen with Connect WhatsApp.
 - [ ] Connect WhatsApp opens a visible macOS folder authorization panel.
 - [ ] The selected folder is `group.net.whatsapp.WhatsApp.shared`.
+- [ ] WhatsApp is fully quit before connecting (not merely closed to the Dock).
+- [ ] A nonempty `Sticker.sqlite-wal` is rejected with instructions to quit
+      WhatsApp and wait for it to checkpoint; WAL-only packs are never silently
+      omitted.
+- [ ] An import is rejected if `Sticker.sqlite`, `Sticker.sqlite-wal`, or
+      `Sticker.sqlite-shm` changes during the read.
 - [ ] Only locally backed installed sticker packs appear.
 - [ ] The verified local pack count and sticker count match WhatsApp storage.
 - [ ] Every sticker in the chosen pack is selected initially.

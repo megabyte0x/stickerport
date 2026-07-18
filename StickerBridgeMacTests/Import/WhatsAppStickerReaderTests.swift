@@ -21,22 +21,82 @@ final class WhatsAppStickerReaderTests: XCTestCase {
         )
     }
 
-    func testLoadLeavesEntireContainerUnchangedWithSQLiteSidecars() throws {
+    func testRejectsAnUncheckpointedWALWithoutChangingAnySidecar() throws {
         let fixture = try WhatsAppSQLiteFixture.make(
-            includeSQLiteSidecars: true
+            leaveCommittedPackInWAL: true
         )
-        defer { try? FileManager.default.removeItem(at: fixture.rootURL) }
+        defer {
+            fixture.close()
+            try? FileManager.default.removeItem(at: fixture.rootURL)
+        }
         let before = try snapshot(of: fixture.rootURL)
 
-        _ = try reader(for: fixture).load(from: fixture.rootURL)
+        XCTAssertNotNil(before.files["Sticker.sqlite-wal"])
+        XCTAssertFalse(before.files["Sticker.sqlite-wal"]?.isEmpty ?? true)
+        XCTAssertThrowsError(
+            try reader(for: fixture).load(from: fixture.rootURL)
+        ) {
+            XCTAssertEqual(
+                $0 as? WhatsAppMVPError,
+                .uncheckpointedWriteAheadLog
+            )
+        }
 
         XCTAssertEqual(try snapshot(of: fixture.rootURL), before)
-        XCTAssertNotNil(
-            before.files["Sticker.sqlite-wal"]
+    }
+
+    func testRejectsWhileWhatsAppIsRunningBeforeOpeningDatabase() throws {
+        let fixture = try WhatsAppSQLiteFixture.make()
+        defer { try? FileManager.default.removeItem(at: fixture.rootURL) }
+        let before = try snapshot(of: fixture.rootURL)
+        let reader = WhatsAppStickerReader(
+            expectedContainerURL: fixture.rootURL,
+            isWhatsAppRunning: { true }
         )
-        XCTAssertNotNil(
-            before.files["Sticker.sqlite-shm"]
+
+        XCTAssertThrowsError(try reader.load(from: fixture.rootURL)) {
+            XCTAssertEqual($0 as? WhatsAppMVPError, .whatsappIsRunning)
+        }
+        XCTAssertEqual(try snapshot(of: fixture.rootURL), before)
+    }
+
+    func testRejectsIfWhatsAppStartsDuringTheImmutableRead() throws {
+        let fixture = try WhatsAppSQLiteFixture.make()
+        defer { try? FileManager.default.removeItem(at: fixture.rootURL) }
+        let runningState = RunningState(values: [false, true])
+        let reader = WhatsAppStickerReader(
+            expectedContainerURL: fixture.rootURL,
+            isWhatsAppRunning: { runningState.next() }
         )
+
+        XCTAssertThrowsError(try reader.load(from: fixture.rootURL)) {
+            XCTAssertEqual($0 as? WhatsAppMVPError, .whatsappIsRunning)
+        }
+        XCTAssertEqual(runningState.callCount, 2)
+    }
+
+    func testRejectsAChangedSQLiteSnapshotAfterTheImmutableRead() throws {
+        let fixture = try WhatsAppSQLiteFixture.make()
+        defer { try? FileManager.default.removeItem(at: fixture.rootURL) }
+        let sharedMemoryURL = URL(
+            fileURLWithPath: fixture.databaseURL.path + "-shm"
+        )
+        let reader = WhatsAppStickerReader(
+            expectedContainerURL: fixture.rootURL,
+            isWhatsAppRunning: { false },
+            afterImmutableRead: {
+                try? Data("changed during read".utf8).write(
+                    to: sharedMemoryURL
+                )
+            }
+        )
+
+        XCTAssertThrowsError(try reader.load(from: fixture.rootURL)) {
+            XCTAssertEqual(
+                $0 as? WhatsAppMVPError,
+                .sourceChangedDuringRead
+            )
+        }
     }
 
     func testWrongContainerFailsBeforeReading() throws {
@@ -151,7 +211,10 @@ final class WhatsAppStickerReaderTests: XCTestCase {
     private func reader(
         for fixture: WhatsAppSQLiteFixture
     ) -> WhatsAppStickerReader {
-        WhatsAppStickerReader(expectedContainerURL: fixture.rootURL)
+        WhatsAppStickerReader(
+            expectedContainerURL: fixture.rootURL,
+            isWhatsAppRunning: { false }
+        )
     }
 
     private func snapshot(of rootURL: URL) throws -> DirectorySnapshot {
@@ -187,5 +250,19 @@ final class WhatsAppStickerReaderTests: XCTestCase {
     private struct DirectorySnapshot: Equatable {
         let directories: Set<String>
         let files: [String: Data]
+    }
+
+    private final class RunningState: @unchecked Sendable {
+        private var values: [Bool]
+        private(set) var callCount = 0
+
+        init(values: [Bool]) {
+            self.values = values
+        }
+
+        func next() -> Bool {
+            callCount += 1
+            return values.removeFirst()
+        }
     }
 }

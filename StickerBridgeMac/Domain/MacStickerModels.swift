@@ -24,6 +24,9 @@ enum WhatsAppMVPError: LocalizedError, Equatable {
     case unexpectedContainer(expectedPath: String)
     case missingDatabase
     case missingStickerDirectory
+    case whatsappIsRunning
+    case uncheckpointedWriteAheadLog
+    case sourceChangedDuringRead
     case missingTable(String)
     case missingColumn(table: String, column: String)
     case unsupportedSchema(String)
@@ -38,6 +41,12 @@ enum WhatsAppMVPError: LocalizedError, Equatable {
             "The selected WhatsApp folder does not contain Sticker.sqlite."
         case .missingStickerDirectory:
             "The selected WhatsApp folder does not contain a stickers directory."
+        case .whatsappIsRunning:
+            "Quit WhatsApp completely before importing stickers, then try again."
+        case .uncheckpointedWriteAheadLog:
+            "WhatsApp still has uncheckpointed sticker changes. Quit WhatsApp completely and wait for it to finish saving, then try again."
+        case .sourceChangedDuringRead:
+            "WhatsApp sticker data changed while it was being read. Quit WhatsApp completely and try again."
         case .missingTable(let table):
             "This WhatsApp version is not supported by the MVP. Missing table: \(table)."
         case .missingColumn(let table, let column):

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SQLite3
 
@@ -7,12 +8,22 @@ protocol WhatsAppStickerReading: Sendable {
 
 struct WhatsAppStickerReader: WhatsAppStickerReading {
     private let expectedContainerURL: URL
+    private let isWhatsAppRunning: @Sendable () -> Bool
+    private let afterImmutableRead: @Sendable () -> Void
 
     init(
         expectedContainerURL: URL =
-            WhatsAppContainerPicker.canonicalContainerURL
+            WhatsAppContainerPicker.canonicalContainerURL,
+        isWhatsAppRunning: @escaping @Sendable () -> Bool = {
+            !NSRunningApplication.runningApplications(
+                withBundleIdentifier: "net.whatsapp.WhatsApp"
+            ).isEmpty
+        },
+        afterImmutableRead: @escaping @Sendable () -> Void = {}
     ) {
         self.expectedContainerURL = expectedContainerURL
+        self.isWhatsAppRunning = isWhatsAppRunning
+        self.afterImmutableRead = afterImmutableRead
     }
 
     func load(from containerURL: URL) throws -> [MacWhatsAppPack] {
@@ -56,6 +67,16 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
             .standardizedFileURL
         guard isDescendant(resolvedStickersURL, of: root) else {
             throw WhatsAppMVPError.missingStickerDirectory
+        }
+        guard !isWhatsAppRunning() else {
+            throw WhatsAppMVPError.whatsappIsRunning
+        }
+
+        let snapshotBeforeRead = try SQLiteSnapshot.capture(
+            databaseURL: databaseURL
+        )
+        guard !snapshotBeforeRead.writeAheadLog.isNonempty else {
+            throw WhatsAppMVPError.uncheckpointedWriteAheadLog
         }
 
         let database = try ReadOnlySQLite(url: databaseURL)
@@ -142,6 +163,16 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
                     ($0.order, $0.id) < ($1.order, $1.id)
                 }
             )
+        }
+        try database.execute("ROLLBACK")
+
+        afterImmutableRead()
+        guard !isWhatsAppRunning() else {
+            throw WhatsAppMVPError.whatsappIsRunning
+        }
+        guard try SQLiteSnapshot.capture(databaseURL: databaseURL)
+            == snapshotBeforeRead else {
+            throw WhatsAppMVPError.sourceChangedDuringRead
         }
         guard !packs.isEmpty else {
             throw WhatsAppMVPError.noLocalPacks
@@ -257,6 +288,49 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
         ] else {
             throw WhatsAppMVPError.unsupportedSchema(
                 "WACDStickerPack must map to Core Data entity 2."
+            )
+        }
+    }
+}
+
+private struct SQLiteSnapshot: Equatable {
+    let database: FileSnapshot
+    let writeAheadLog: FileSnapshot
+    let sharedMemory: FileSnapshot
+
+    static func capture(databaseURL: URL) throws -> SQLiteSnapshot {
+        try SQLiteSnapshot(
+            database: FileSnapshot.capture(at: databaseURL),
+            writeAheadLog: FileSnapshot.capture(
+                at: URL(fileURLWithPath: databaseURL.path + "-wal")
+            ),
+            sharedMemory: FileSnapshot.capture(
+                at: URL(fileURLWithPath: databaseURL.path + "-shm")
+            )
+        )
+    }
+}
+
+private enum FileSnapshot: Equatable {
+    case absent
+    case bytes(Data)
+
+    var isNonempty: Bool {
+        guard case .bytes(let data) = self else {
+            return false
+        }
+        return !data.isEmpty
+    }
+
+    static func capture(at url: URL) throws -> FileSnapshot {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return .absent
+        }
+        do {
+            return .bytes(try Data(contentsOf: url))
+        } catch {
+            throw WhatsAppMVPError.sqlite(
+                "The database snapshot could not be read safely."
             )
         }
     }

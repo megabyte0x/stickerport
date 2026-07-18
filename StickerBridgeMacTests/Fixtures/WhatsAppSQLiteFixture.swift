@@ -4,13 +4,14 @@ import SQLite3
 struct WhatsAppSQLiteFixture {
     let rootURL: URL
     let databaseURL: URL
+    private let retainedWALConnection: RetainedSQLiteConnection?
 
     static func make(
         includeStickerTable: Bool = true,
         firstRelativePath: String = "pack/one.webp",
         installedPackEntity: Int64 = 2,
         relativeImagePathDeclaredType: String = "VARCHAR",
-        includeSQLiteSidecars: Bool = false
+        leaveCommittedPackInWAL: Bool = false
     ) throws -> WhatsAppSQLiteFixture {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -33,8 +34,6 @@ struct WhatsAppSQLiteFixture {
               let database else {
             throw CocoaError(.fileWriteUnknown)
         }
-        defer { sqlite3_close(database) }
-
         try execute(database, """
         CREATE TABLE Z_PRIMARYKEY (
           Z_ENT INTEGER PRIMARY KEY,
@@ -84,19 +83,59 @@ struct WhatsAppSQLiteFixture {
             """)
         }
 
-        if includeSQLiteSidecars {
-            try Data("synthetic-wal-sidecar".utf8).write(
-                to: URL(fileURLWithPath: databaseURL.path + "-wal")
+        sqlite3_close(database)
+
+        let retainedWALConnection: RetainedSQLiteConnection?
+        if leaveCommittedPackInWAL {
+            retainedWALConnection = try makeUncheckpointedWAL(
+                databaseURL: databaseURL
             )
-            try Data("synthetic-shm-sidecar".utf8).write(
-                to: URL(fileURLWithPath: databaseURL.path + "-shm")
-            )
+        } else {
+            retainedWALConnection = nil
         }
 
         return WhatsAppSQLiteFixture(
             rootURL: root,
-            databaseURL: databaseURL
+            databaseURL: databaseURL,
+            retainedWALConnection: retainedWALConnection
         )
+    }
+
+    func close() {
+        retainedWALConnection?.close()
+    }
+
+    private static func makeUncheckpointedWAL(
+        databaseURL: URL
+    ) throws -> RetainedSQLiteConnection {
+        var database: OpaquePointer?
+        guard sqlite3_open_v2(
+            databaseURL.path,
+            &database,
+            SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX,
+            nil
+        ) == SQLITE_OK, let database else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        do {
+            try execute(database, "PRAGMA journal_mode = WAL")
+            try execute(database, "PRAGMA wal_autocheckpoint = 0")
+            try execute(database, """
+            BEGIN IMMEDIATE;
+            INSERT INTO ZWACDABSTRACTSTICKERPACK
+              VALUES (12, 2, 2, 'WAL Fixture Pack', 'Fixture Publisher');
+            INSERT INTO ZWACDSTICKER (
+              Z_PK, ZSTICKERPACK, ZSORT,
+              ZRELATIVEIMAGEPATH, ZEMOJIS
+            )
+              VALUES (102, 12, 0, 'pack/one.webp', '🧪');
+            COMMIT;
+            """)
+            return RetainedSQLiteConnection(database)
+        } catch {
+            sqlite3_close(database)
+            throw error
+        }
     }
 
     private static func execute(
@@ -120,5 +159,24 @@ struct WhatsAppSQLiteFixture {
                 userInfo: [NSLocalizedDescriptionKey: message]
             )
         }
+    }
+}
+
+private final class RetainedSQLiteConnection {
+    private var database: OpaquePointer?
+
+    init(_ database: OpaquePointer) {
+        self.database = database
+    }
+
+    func close() {
+        if let database {
+            sqlite3_close(database)
+            self.database = nil
+        }
+    }
+
+    deinit {
+        close()
     }
 }
