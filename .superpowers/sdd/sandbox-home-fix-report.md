@@ -61,3 +61,20 @@ were accessed.
 
 Source/test commit: `415b7db fix: use POSIX home for WhatsApp container`.
 Remaining acceptance is the parent-owned live signed-app picker re-test.
+
+## Review hardening follow-up
+
+The POSIX account-home resolver now accepts only a canonical absolute `pw_dir`:
+it rejects control characters and rejects inputs whose Foundation
+standardization changes their path. Synthetic coverage includes double-slash,
+traversal, and control-character absolute paths; no test invokes `getuid()` or
+`getpwuid_r`.
+
+The low-level account lookup is now injectable for tests. Its `ERANGE` retry
+clamps the next capacity to 1 MiB and performs that cap attempt before returning
+the lookup error. The synthetic retry test verifies capacities `700000` then
+`1048576` before the expected `ERANGE` failure.
+
+Focused test command remained the one above. Result: `TEST SUCCEEDED`; 17
+tests passed. Source/test commit: `d3e389a fix: validate POSIX WhatsApp home
+lookup`.
