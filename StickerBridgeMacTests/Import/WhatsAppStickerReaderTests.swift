@@ -2,9 +2,11 @@ import XCTest
 @testable import StickerBridgeMac
 
 final class WhatsAppStickerReaderTests: XCTestCase {
-    func testDefaultCanonicalContainerUsesLoginAccountHome() throws {
+    func testDefaultCanonicalContainerUsesPOSIXLoginAccountHome() throws {
         let loginHomePath = try XCTUnwrap(
-            NSHomeDirectoryForUser(NSUserName())
+            WhatsAppContainerPicker.posixLoginHomeDirectory(
+                forUserID: getuid()
+            )
         )
         let expected = WhatsAppContainerPicker.canonicalContainerURL(
             forLoginUserHomeDirectory: URL(
@@ -17,6 +19,34 @@ final class WhatsAppStickerReaderTests: XCTestCase {
             WhatsAppContainerPicker.canonicalContainerURL.path,
             expected.path
         )
+    }
+
+    func testPOSIXHomeResolverRejectsMissingAccount() {
+        XCTAssertThrowsError(
+            try WhatsAppContainerPicker.resolvedLoginUserHomeDirectory(
+                forUserID: 501,
+                lookingUpHomeDirectory: { _ in nil }
+            )
+        ) {
+            XCTAssertEqual(
+                $0 as? LoginHomeDirectoryError,
+                .missingAccount(501)
+            )
+        }
+    }
+
+    func testPOSIXHomeResolverRejectsRelativeHomePath() {
+        XCTAssertThrowsError(
+            try WhatsAppContainerPicker.resolvedLoginUserHomeDirectory(
+                forUserID: 501,
+                lookingUpHomeDirectory: { _ in "Users/stickerbridge" }
+            )
+        ) {
+            XCTAssertEqual(
+                $0 as? LoginHomeDirectoryError,
+                .invalidPath("Users/stickerbridge")
+            )
+        }
     }
 
     func testCanonicalContainerUsesLoginHomeRatherThanSandboxDataHome() {
