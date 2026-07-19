@@ -43,10 +43,10 @@ test("server-renders the StickerPort download hero", async () => {
   assert.match(html, /Bring your WhatsApp stickers to Signal\./);
   assert.match(html, /Everything stays on your Mac\./);
   assert.match(html, /Download for Mac/);
-  assert.match(html, /macOS 15 or later · v0\.1\.0/);
+  assert.match(html, /macOS 15 or later/);
+  assert.doesNotMatch(html, /macOS 15 or later · v0\.1\.0/);
+  assert.match(html, /On-device/);
   assert.match(html, /Read-only/);
-  assert.match(html, /Local-only/);
-  assert.match(html, /No account/);
   assert.ok(html.includes(`href="${DOWNLOAD_URL}"`));
   assert.match(
     html,
@@ -97,6 +97,12 @@ test("renders real WhatsApp sample stickers in a macOS app frame", async () => {
   for (const asset of stickerAssets) {
     assert.ok(html.includes(`src="/stickers/${asset}"`));
   }
+  const body = html.slice(html.indexOf("<body"));
+  assert.match(body, /Your collection/);
+  assert.doesNotMatch(
+    body,
+    /4 sample stickers|Local-only|No account|Official Cuppy sample artwork|Sticker source/,
+  );
   assert.doesNotMatch(html, /😂|🫶|😎/);
 });
 

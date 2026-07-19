@@ -379,14 +379,6 @@ h1 {
   background: var(--app-coral-soft);
 }
 
-.trust-list__local {
-  background: #eee9fb;
-}
-
-.trust-list__account {
-  background: #e8edf9;
-}
-
 .trust-list li span {
   color: currentColor;
   font-size: 0.62rem;
@@ -395,7 +387,7 @@ h1 {
 .sticker-shelf {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   margin: 0;
   overflow: hidden;
   padding: clamp(1rem, 2.2vw, 1.8rem);
@@ -627,18 +619,6 @@ h1 {
   box-shadow: 0 0 0 0.34rem rgba(80, 200, 137, 0.17);
 }
 
-.sticker-shelf figcaption {
-  position: relative;
-  z-index: 6;
-  max-width: 34rem;
-  margin-inline: auto;
-  color: var(--app-muted);
-  font-size: 0.63rem;
-  font-weight: 580;
-  line-height: 1.35;
-  text-align: center;
-}
-
 .site-footer {
   position: relative;
   z-index: 4;
@@ -679,7 +659,7 @@ h1 {
 @media (max-width: 860px) {
   .hero {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(11rem, 0.82fr);
+    grid-template-rows: auto minmax(12.5rem, 0.9fr);
   }
 
   .hero-card {
@@ -709,12 +689,47 @@ h1 {
   }
 
   .sample-sticker {
-    width: clamp(4.25rem, 17vw, 7rem);
+    width: clamp(3.6rem, 12vw, 5.1rem);
+  }
+
+  .sample-sticker--smile {
+    top: 4%;
+    left: 6%;
+  }
+
+  .sample-sticker--love {
+    top: 2%;
+    right: 8%;
+  }
+
+  .sample-sticker--work {
+    bottom: -3%;
+    left: 16%;
+  }
+
+  .sample-sticker--hi {
+    right: 14%;
+    bottom: -4%;
   }
 
   .folder-card {
-    top: 33%;
-    width: min(48%, 19rem);
+    top: 38%;
+    width: min(42%, 16rem);
+    padding: 0.72rem;
+  }
+
+  .platform-chip--source {
+    top: 53%;
+    left: 1%;
+  }
+
+  .platform-chip--destination {
+    top: 39%;
+    right: 1%;
+  }
+
+  .transfer-path {
+    top: 59%;
   }
 }
 
@@ -864,16 +879,11 @@ h1 {
     font-size: 0.58rem;
   }
 
-  .sticker-shelf figcaption {
-    display: none;
-  }
-
   .site-footer {
     padding-top: 0.45rem;
   }
 
-  .site-footer > span,
-  .site-footer a:first-child {
+  .site-footer > span {
     display: none;
   }
 
@@ -941,8 +951,7 @@ h1 {
 @media (max-height: 500px) {
   .toolbar-note,
   .product-kicker,
-  .trust-list,
-  .sticker-shelf figcaption {
+  .trust-list {
     display: none;
   }
 
@@ -1024,8 +1033,7 @@ h1 {
 
   .lede,
   .compatibility,
-  .site-footer,
-  .sticker-shelf figcaption {
+  .site-footer {
     color: var(--app-ink);
   }
 }

@@ -92,12 +92,6 @@ export default function Home() {
                 <li className="trust-list__read">
                   <span aria-hidden="true">●</span> Read-only
                 </li>
-                <li className="trust-list__local">
-                  <span aria-hidden="true">◇</span> Local-only
-                </li>
-                <li className="trust-list__account">
-                  <span aria-hidden="true">✓</span> No account
-                </li>
               </ul>
             </div>
 
@@ -110,7 +104,7 @@ export default function Home() {
                   <p>Sticker shelf</p>
                   <strong>Bring the ones you love.</strong>
                 </div>
-                <span>4 sample stickers</span>
+                <span>Your collection</span>
               </div>
 
               <div className="shelf-stage">
@@ -149,23 +143,12 @@ export default function Home() {
                   Signal
                 </span>
               </div>
-
-              <figcaption>
-                Official Cuppy sample artwork from WhatsApp&apos;s BSD-licensed
-                sticker repository.
-              </figcaption>
             </figure>
           </section>
 
           <footer className="site-footer">
             <span>Not affiliated with WhatsApp or Signal.</span>
             <div>
-              <a
-                href="https://github.com/WhatsApp/stickers"
-                aria-label="View the source for the Cuppy sample stickers"
-              >
-                Sticker source
-              </a>
               <a href={siteConfig.repositoryUrl}>View app source</a>
             </div>
           </footer>
