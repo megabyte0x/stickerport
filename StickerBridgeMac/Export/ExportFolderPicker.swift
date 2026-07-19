@@ -11,7 +11,7 @@ struct ExportFolderPicker: ExportFolderPicking {
     func chooseExportParent() -> URL? {
         let panel = NSOpenPanel()
         panel.title = "Choose Signal Export Location"
-        panel.message = "StickerBridge creates a new Signal-ready folder here."
+        panel.message = "StickerPort creates a new Signal-ready folder here."
         panel.prompt = "Choose Location"
         panel.canChooseFiles = false
         panel.canChooseDirectories = true

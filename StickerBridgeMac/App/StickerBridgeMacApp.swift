@@ -12,7 +12,7 @@ struct StickerBridgeMacApp: App {
     )
 
     var body: some Scene {
-        WindowGroup("StickerBridge", id: "main") {
+        WindowGroup("StickerPort", id: "main") {
             MacRootView(store: store)
         }
         .defaultSize(width: 720, height: 620)

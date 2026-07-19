@@ -110,7 +110,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.megabyte0x.stickerbridge.mac
         PRODUCT_MODULE_NAME: StickerBridgeMac
-        PRODUCT_NAME: StickerBridge
+        PRODUCT_NAME: StickerPort
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: 1.0.0
         MACOSX_DEPLOYMENT_TARGET: "15.0"
@@ -133,7 +134,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.megabyte0x.stickerbridge.mac.tests
         GENERATE_INFOPLIST_FILE: YES
-        TEST_HOST: $(BUILT_PRODUCTS_DIR)/StickerBridge.app/Contents/MacOS/StickerBridge
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/StickerPort.app/Contents/MacOS/StickerPort
         BUNDLE_LOADER: $(TEST_HOST)
   StickerBridgeMacUITests:
     type: bundle.ui-testing

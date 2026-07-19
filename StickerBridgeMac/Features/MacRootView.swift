@@ -19,7 +19,7 @@ struct MacRootView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Prepare WhatsApp stickers for Signal")
                 .font(.title2)
-            Text("Everything stays on this Mac. StickerBridge never changes WhatsApp or uploads to Signal.")
+            Text("Everything stays on this Mac. StickerPort never changes WhatsApp or uploads to Signal.")
                 .foregroundStyle(.secondary)
             Divider()
             content

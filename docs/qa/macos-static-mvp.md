@@ -1,4 +1,4 @@
-# StickerBridge macOS static MVP acceptance
+# StickerPort macOS static MVP acceptance
 
 Never attach or commit the real WhatsApp databases or sticker media.
 
@@ -7,7 +7,7 @@ Record these values in private local test notes:
 - macOS version
 - WhatsApp version
 - Signal Desktop version
-- StickerBridge commit
+- StickerPort commit
 - SHA-256 before and after for `Sticker.sqlite`
 - SHA-256 before and after for `BackedUpKeyValue.sqlite`
 - installed pack count
@@ -34,7 +34,7 @@ Record these values in private local test notes:
 - [ ] An action that would exceed 200 stickers leaves selection unchanged and
       shows the Signal limit.
 - [ ] Export asks for a parent outside WhatsApp's container.
-- [ ] Export creates one collision-safe `StickerBridge - WhatsApp Selection`
+- [ ] Export creates one collision-safe `StickerPort - WhatsApp Selection`
       folder.
 - [ ] `Stickers/` contains image files only.
 - [ ] Exported WebP bytes match their WhatsApp source bytes.

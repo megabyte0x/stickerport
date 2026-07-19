@@ -66,7 +66,7 @@ struct SignalFolderExporter: SignalFolderExporting {
 
         let finalURL = uniqueOutputURL(parent: parentURL, title: pack.title)
         let temporaryURL = parentURL.appendingPathComponent(
-            ".StickerBridge-\(UUID().uuidString)",
+            ".StickerPort-\(UUID().uuidString)",
             isDirectory: true
         )
         let temporaryStickers = temporaryURL.appendingPathComponent(
@@ -177,7 +177,7 @@ struct SignalFolderExporter: SignalFolderExporting {
     }
 
     private func uniqueOutputURL(parent: URL, title: String) -> URL {
-        let stem = "StickerBridge - \(safeName(title))"
+        let stem = "StickerPort - \(safeName(title))"
         var suffix = 1
         while true {
             let name = suffix == 1 ? stem : "\(stem) \(suffix)"
@@ -211,7 +211,7 @@ struct SignalFolderExporter: SignalFolderExporting {
         4. Assign the emoji from emoji-reference.txt.
         5. Enter title and author, upload, and install.
 
-        StickerBridge does not upload or install the pack.
+        StickerPort does not upload or install the pack.
         """
     }
 }

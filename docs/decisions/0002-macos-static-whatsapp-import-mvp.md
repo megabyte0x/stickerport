@@ -6,13 +6,13 @@ Accepted.
 
 ## Decision
 
-The macOS StickerBridge MVP supports the verified native WhatsApp 26.28.22
+The macOS StickerPort MVP supports the verified native WhatsApp 26.28.22
 sticker schema. On launch it computes the canonical current-user container and
 opens the macOS authorization panel at
 `group.net.whatsapp.WhatsApp.shared`. The sandbox still requires the user to
 confirm access.
 
-After WhatsApp is fully quit, StickerBridge opens `Sticker.sqlite` and optional
+After WhatsApp is fully quit, StickerPort opens `Sticker.sqlite` and optional
 `BackedUpKeyValue.sqlite` read-only with SQLite immutable URI mode. It imports
 locally backed installed packs and regular `fs.v2` Favorites resolved by exact
 file-hash equality. It never changes WhatsApp data.
@@ -22,7 +22,7 @@ empty. Each category has independent Select All and Clear actions, and every
 sticker can be toggled manually. A combined selection contains 1 through 200
 unique static WebP stickers.
 
-StickerBridge writes compliant bytes to one ordinary Signal-ready folder,
+StickerPort writes compliant bytes to one ordinary Signal-ready folder,
 reveals its `Stickers/` directory, and prompts the user to open Signal Desktop.
 The user completes File → Create/Upload Sticker Pack, emoji assignment, title,
 author, upload, and installation in Signal Desktop.
