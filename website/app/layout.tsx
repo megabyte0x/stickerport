@@ -1,25 +1,46 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
+import { siteConfig } from "./site-config";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+async function requestOrigin() {
+  const requestHeaders = await headers();
+  const host =
+    requestHeaders.get("x-forwarded-host") ??
+    requestHeaders.get("host") ??
+    "localhost";
+  const protocol =
+    requestHeaders.get("x-forwarded-proto") ??
+    (host.startsWith("localhost") ? "http" : "https");
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+  return `${protocol}://${host}`;
+}
 
-export const metadata: Metadata = {
-  title: "Starter Project",
-  description: "A clean starting point for building your site.",
-  icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const origin = await requestOrigin();
+
+  return {
+    title: siteConfig.title,
+    description: siteConfig.description,
+    applicationName: siteConfig.name,
+    icons: {
+      icon: "/stickerport-icon.png",
+      shortcut: "/stickerport-icon.png",
+      apple: "/stickerport-icon.png",
+    },
+    openGraph: {
+      title: siteConfig.title,
+      description: siteConfig.description,
+      type: "website",
+      url: origin,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: siteConfig.title,
+      description: siteConfig.description,
+    },
+  };
+}
 
 export default function RootLayout({
   children,
@@ -28,11 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
