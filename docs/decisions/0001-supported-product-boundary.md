@@ -6,8 +6,12 @@ Accepted.
 
 ## Decision
 
-StickerBridge imports only files the user explicitly provides through Files or
-the iOS share sheet. It does not enumerate WhatsApp's private sticker library.
+On iOS, StickerBridge imports only files the user explicitly provides through
+Files or the iOS share sheet. The iOS app does not enumerate WhatsApp's private
+sticker library.
+
+The macOS product has a separate, read-only boundary in ADR 0002. It may import
+locally backed stickers from a user-authorized WhatsApp Desktop container.
 
 StickerBridge converts media on-device and exports Signal-compatible files for
 Signal Desktop. It does not upload to Signal, handle Signal credentials, or use
