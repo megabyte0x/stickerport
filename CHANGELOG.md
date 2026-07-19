@@ -7,6 +7,14 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-19
+
+### Changed
+
+- Refreshed the macOS interface with a lighter, more lively StickerPort theme
+  and a more focused sticker-first catalog.
+- Removed redundant emoji labels and sticker filenames from the catalog tiles.
+
 ### Fixed
 
 - Release DMGs now require Developer ID signing and Apple notarization before
@@ -29,5 +37,6 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   Developer ID signing and notarization.
 - Automated GitHub release notes and tag-triggered DMG publishing.
 
-[Unreleased]: https://github.com/megabyte0x/stickerport/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/megabyte0x/stickerport/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/megabyte0x/stickerport/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/megabyte0x/stickerport/releases/tag/v0.1.0
