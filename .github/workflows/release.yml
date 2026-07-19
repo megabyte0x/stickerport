@@ -1,0 +1,50 @@
+name: Release DMG
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Run macOS unit tests
+        run: |
+          xcodebuild \
+            -project StickerBridge.xcodeproj \
+            -scheme StickerBridgeMac \
+            -destination 'platform=macOS' \
+            -derivedDataPath .build/ci \
+            -only-testing:StickerBridgeMacTests \
+            CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM= \
+            test
+
+      - name: Build DMG
+        run: script/release_dmg.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/StickerPort-${version}.dmg" \
+            "dist/StickerPort-${version}.dmg.sha256" \
+            --generate-notes \
+            --title "StickerPort ${GITHUB_REF_NAME}" \
+            --verify-tag
