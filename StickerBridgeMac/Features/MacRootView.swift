@@ -1,8 +1,8 @@
-import AppKit
 import SwiftUI
 
 struct MacRootView: View {
     let store: MacBridgeStore
+
     @State private var showingSignalPrompt = false
 
     private var isUITesting: Bool {
@@ -16,16 +16,19 @@ struct MacRootView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Prepare WhatsApp stickers for Signal")
-                .font(.title2)
-            Text("Everything stays on this Mac. StickerPort never changes WhatsApp or uploads to Signal.")
-                .foregroundStyle(.secondary)
-            Divider()
-            content
+        ZStack {
+            StickerTheme.canvas
+                .ignoresSafeArea()
+            StickerConfettiBackground()
+
+            VStack(spacing: 18) {
+                StickerPortHeader()
+                content
+            }
+            .padding(24)
         }
-        .padding(24)
-        .frame(minWidth: 640, minHeight: 520)
+        .frame(minWidth: 760, minHeight: 640)
+        .preferredColorScheme(.light)
         .task {
             guard !isUITesting,
                   !isHostedUnitTesting,
@@ -40,7 +43,7 @@ struct MacRootView: View {
             }
         }
         .confirmationDialog(
-            "Export complete",
+            "Your stickers are ready",
             isPresented: $showingSignalPrompt,
             titleVisibility: .visible
         ) {
@@ -50,7 +53,7 @@ struct MacRootView: View {
             Button("Not Now", role: .cancel) {}
         } message: {
             Text(
-                "The Stickers folder is open in Finder. Continue with File → Create/Upload Sticker Pack in Signal Desktop."
+                "The sticker folder is open in Finder. In Signal Desktop, choose File → Create/Upload Sticker Pack."
             )
         }
     }
@@ -59,161 +62,31 @@ struct MacRootView: View {
     private var content: some View {
         switch store.phase {
         case .disconnected:
-            HStack {
-                ProgressView()
-                Text("Preparing WhatsApp access")
-            }
+            WorkflowStatusView(
+                icon: "sparkles",
+                title: "Preparing your sticker shelf",
+                message: "Choose WhatsApp’s shared folder when prompted. StickerPort only reads your stickers.",
+                showsProgress: true
+            )
 
         case .loading:
-            ProgressView("Reading WhatsApp sticker packs and Favorites")
+            WorkflowStatusView(
+                icon: "tray.full.fill",
+                title: "Gathering your stickers",
+                message: "Reading locally installed packs and Favorites. Nothing leaves this Mac.",
+                showsProgress: true
+            )
 
         case .ready, .exporting, .finished:
-            catalogEditor
+            StickerCatalogView(store: store)
 
         case .failed(let message):
-            VStack(alignment: .leading, spacing: 12) {
-                Text(message)
-                    .foregroundStyle(.red)
-                Button("Try Again") {
-                    Task {
-                        store.startOver()
-                        await store.connect()
-                    }
+            WorkflowFailureView(message: message) {
+                Task {
+                    store.startOver()
+                    await store.connect()
                 }
             }
-        }
-    }
-
-    private var catalogEditor: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            List {
-                Section {
-                    categoryActions(for: .stickerPacks)
-                    if store.stickerPacks.isEmpty {
-                        Text("No locally installed sticker packs found.")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(store.stickerPacks) { pack in
-                            Text(pack.title)
-                                .font(.headline)
-                            ForEach(pack.stickers) { sticker in
-                                stickerToggle(sticker)
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Sticker Packs")
-                        .accessibilityIdentifier("Sticker Packs Section")
-                }
-
-                Section {
-                    categoryActions(for: .favorites)
-                    if store.favorites.isEmpty {
-                        Text("No supported Favorites found.")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(store.favorites) { sticker in
-                            stickerToggle(sticker)
-                        }
-                    }
-                } header: {
-                    Text("Favorites")
-                        .accessibilityIdentifier("Favorites Section")
-                }
-            }
-            .frame(minHeight: 320)
-            .disabled(store.isExporting)
-
-            HStack {
-                Text("\(store.selectedStickerIDs.count) selected")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button("Export for Signal") {
-                    Task { await store.createSignalFolder() }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!store.canExport)
-                .accessibilityIdentifier("Export for Signal")
-            }
-
-            if let selectionMessage = store.selectionMessage {
-                Text(selectionMessage)
-                    .foregroundStyle(.red)
-            }
-
-            if store.phase == .exporting {
-                ProgressView("Creating Signal-ready folder")
-            }
-
-            if store.phase == .finished,
-               let result = store.exportResult {
-                Text(result.stickersURL.path)
-                    .textSelection(.enabled)
-                    .font(.caption)
-                HStack {
-                    Button("Reveal Stickers") {
-                        store.revealStickers()
-                    }
-                    Button("Open Signal Desktop") {
-                        store.openSignalDesktop()
-                    }
-                }
-                if store.signalLaunchFailed {
-                    Text("Signal Desktop is not installed or could not be opened.")
-                        .foregroundStyle(.red)
-                }
-            }
-        }
-    }
-
-    private func categoryActions(
-        for category: MacStickerCategory
-    ) -> some View {
-        HStack {
-            Button("Select All") {
-                store.selectAll(in: category)
-            }
-            Button("Clear") {
-                store.clearSelection(in: category)
-            }
-        }
-    }
-
-    private func stickerToggle(
-        _ sticker: MacWhatsAppSticker
-    ) -> some View {
-        Toggle(
-            isOn: Binding(
-                get: {
-                    store.selectedStickerIDs.contains(sticker.id)
-                },
-                set: {
-                    store.setSticker(sticker.id, isSelected: $0)
-                }
-            )
-        ) {
-            HStack(spacing: 12) {
-                thumbnail(sticker.data)
-                Text(sticker.emoji)
-                Text(
-                    URL(fileURLWithPath: sticker.relativePath)
-                        .lastPathComponent
-                )
-                .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func thumbnail(_ data: Data) -> some View {
-        if let image = NSImage(data: data) {
-            Image(nsImage: image)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 44, height: 44)
-        } else {
-            Image(systemName: "photo")
-                .frame(width: 44, height: 44)
         }
     }
 }
