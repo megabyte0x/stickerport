@@ -12,18 +12,11 @@ struct StickerTileView: View {
 
     var body: some View {
         Button(action: toggle) {
-            VStack(spacing: 7) {
-                ZStack(alignment: .topTrailing) {
-                    thumbnail
-                        .frame(maxWidth: .infinity)
+            ZStack(alignment: .topTrailing) {
+                thumbnail
+                    .frame(maxWidth: .infinity)
 
-                    selectionIndicator
-                }
-
-                Text(displayEmoji)
-                    .font(.system(size: 20))
-                    .frame(minHeight: 24)
-                    .accessibilityHidden(true)
+                selectionIndicator
             }
             .padding(10)
             .frame(maxWidth: .infinity)
@@ -59,7 +52,8 @@ struct StickerTileView: View {
                 : .spring(response: 0.32, dampingFraction: 0.90),
             value: isSelected
         )
-        .accessibilityLabel("\(displayEmoji) sticker")
+        .accessibilityIdentifier("Sticker \(sticker.id)")
+        .accessibilityLabel("Sticker")
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .help(isSelected ? "Remove sticker" : "Select sticker")
@@ -112,13 +106,6 @@ struct StickerTileView: View {
         }
         .scaleEffect(isSelected ? 1 : 0.92)
         .accessibilityHidden(true)
-    }
-
-    private var displayEmoji: String {
-        let trimmed = sticker.emoji.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-        return trimmed.isEmpty ? "🙂" : trimmed
     }
 }
 

@@ -17,7 +17,7 @@ final class StickerBridgeMacUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Connect WhatsApp"].exists)
     }
 
-    func testReadyDesignUsesEmojiOnlyStickerGrid() {
+    func testReadyDesignUsesStickerOnlyGrid() {
         let app = XCUIApplication()
         app.launchArguments = [
             "--ui-testing",
@@ -29,8 +29,10 @@ final class StickerBridgeMacUITests: XCTestCase {
             app.staticTexts["Sticker packs"]
                 .waitForExistence(timeout: 5)
         )
-        XCTAssertTrue(app.buttons["🐱 sticker"].exists)
-        XCTAssertTrue(app.buttons["❤️ sticker"].exists)
+        XCTAssertTrue(app.buttons["Sticker 1"].exists)
+        XCTAssertTrue(app.buttons["Sticker 3"].exists)
+        XCTAssertFalse(app.staticTexts["🐱"].exists)
+        XCTAssertFalse(app.staticTexts["❤️"].exists)
         XCTAssertFalse(app.staticTexts["hidden-file-1.webp"].exists)
         XCTAssertTrue(app.buttons["Export for Signal"].isEnabled)
     }
