@@ -234,6 +234,23 @@ final class MacBridgeStore {
         authorizedInputRoot = nil
     }
 
+    #if DEBUG
+    func loadDesignPreview(
+        sources: [MacWhatsAppPack],
+        selectedStickerIDs: Set<Int64>
+    ) {
+        self.sources = sources
+        self.selectedStickerIDs = selectedStickerIDs
+        selectionMessage = nil
+        exportResult = nil
+        signalLaunchFailed = false
+        authorizedInputRoot = URL(
+            fileURLWithPath: "/tmp/StickerPortDesignPreview"
+        )
+        phase = .ready
+    }
+    #endif
+
     private func applySelection(_ selection: Set<Int64>) {
         guard selection.count <= SignalStickerRules.maximumStickerCount else {
             selectionMessage =
