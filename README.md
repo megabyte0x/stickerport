@@ -15,10 +15,10 @@ Download `StickerPort-0.1.0.dmg` and its checksum from the
 [v0.1.0 release](https://github.com/megabyte0x/stickerport/releases/tag/v0.1.0).
 StickerPort requires macOS 15 or newer.
 
-The v0.1.0 DMG is ad-hoc signed and is not Apple-notarized. On first launch,
-macOS may identify it as coming from an unidentified developer. Control-click
-StickerPort in Applications, choose **Open**, then confirm. If macOS does not
-offer that choice, use **System Settings → Privacy & Security → Open Anyway**.
+Release DMGs are signed with a Developer ID Application certificate and
+notarized by Apple. If Gatekeeper reports that Apple cannot verify the DMG,
+do not bypass the warning: verify the checksum and report the affected release
+asset so it can be replaced.
 
 To verify the download:
 
@@ -81,14 +81,15 @@ xcodebuild \
   test
 ```
 
-Build the v0.1.0 DMG:
+Build an ad-hoc DMG for local testing only:
 
 ```sh
-script/release_dmg.sh 0.1.0
+ALLOW_ADHOC_DMG=1 script/release_dmg.sh 0.1.0
 ```
 
 The DMG and checksum are written to `dist/`. The release script creates a
-universal `arm64`/`x86_64` app and uses an ad-hoc signature by default.
+universal `arm64`/`x86_64` app. It refuses to create a publishable release
+without Developer ID signing and Apple notarization.
 
 For a Developer ID release, install the certificate in the keychain and run:
 
@@ -100,6 +101,25 @@ script/release_dmg.sh 0.1.0
 
 `NOTARY_PROFILE` must name credentials already stored with
 `xcrun notarytool store-credentials`.
+
+API-key notarization is also supported with `NOTARY_KEY_PATH`,
+`NOTARY_KEY_ID`, and `NOTARY_ISSUER_ID`. Apple requires a team API key for
+`notarytool`; individual API keys are not supported.
+
+The GitHub release workflow requires these Actions secrets:
+
+- `MACOS_DEVELOPER_ID_CERTIFICATE_BASE64`: base64-encoded Developer ID
+  Application `.p12` certificate
+- `MACOS_DEVELOPER_ID_CERTIFICATE_PASSWORD`: password for the `.p12`
+- `APPLE_TEAM_ID`: Apple Developer team identifier
+- `APPLE_NOTARY_KEY_BASE64`: base64-encoded App Store Connect API `.p8` key
+- `APPLE_NOTARY_KEY_ID`: App Store Connect API key identifier
+- `APPLE_NOTARY_ISSUER_ID`: issuer UUID for the team API key
+
+The workflow imports the certificate into a temporary keychain, submits the
+DMG with `notarytool`, staples the ticket, runs Gatekeeper assessments, and
+only then uploads the release assets. A manual workflow run can replace an
+existing tag's assets using the fixed workflow from the selected branch.
 
 ## Releases and changelog
 

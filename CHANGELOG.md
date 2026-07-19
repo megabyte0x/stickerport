@@ -7,6 +7,12 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Fixed
+
+- Release DMGs now require Developer ID signing and Apple notarization before
+  GitHub publishes them, preventing Gatekeeper's “Apple could not verify”
+  rejection for downloaded builds.
+
 ## [0.1.0] - 2026-07-19
 
 ### Added
