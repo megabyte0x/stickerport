@@ -74,8 +74,7 @@ export default function Home() {
                 <a
                   className="download-button"
                   href={siteConfig.downloadUrl}
-                  download={`StickerPort-${siteConfig.version}.dmg`}
-                  aria-label={`Download StickerPort ${siteConfig.version} DMG for macOS`}
+                  aria-label="Download the latest StickerPort DMG for macOS"
                 >
                   <span className="download-symbol" aria-hidden="true">
                     ↓

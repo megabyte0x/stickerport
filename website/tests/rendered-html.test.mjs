@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
-const DOWNLOAD_URL =
-  "https://github.com/megabyte0x/stickerport/releases/download/v0.1.0/StickerPort-0.1.0.dmg";
+const DOWNLOAD_URL = "/download";
+const LATEST_RELEASE_API =
+  "https://api.github.com/repos/megabyte0x/stickerport/releases/latest";
+const LATEST_DMG_URL =
+  "https://github.com/megabyte0x/stickerport/releases/download/v0.2.0/StickerPort-0.2.0.dmg";
 const ogImage = new URL("../public/og.png", import.meta.url);
 const stickerAssets = [
   "cuppy-smile.webp",
@@ -12,13 +15,13 @@ const stickerAssets = [
   "cuppy-hi.webp",
 ];
 
-async function render() {
+async function render(path = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("http://localhost/", {
+    new Request(new URL(path, "http://localhost/"), {
       headers: { accept: "text/html" },
     }),
     {
@@ -50,7 +53,7 @@ test("server-renders the StickerPort download hero", async () => {
   assert.ok(html.includes(`href="${DOWNLOAD_URL}"`));
   assert.match(
     html,
-    /aria-label="Download StickerPort 0\.1\.0 DMG for macOS"/,
+    /aria-label="Download the latest StickerPort DMG for macOS"/,
   );
   assert.equal(
     (html.match(/src="\/stickerport-icon\.png"/g) ?? []).length,
@@ -62,6 +65,39 @@ test("server-renders the StickerPort download hero", async () => {
   );
   assert.doesNotMatch(html, /codex-preview|Building your site|SkeletonPreview/);
   assert.doesNotMatch(html, /automatic Signal upload|direct Signal install/i);
+});
+
+test("redirects the download button to the latest published DMG", async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  globalThis.fetch = async (input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    assert.equal(url, LATEST_RELEASE_API);
+    assert.deepEqual(init?.headers, {
+      Accept: "application/vnd.github+json",
+      "User-Agent": "StickerPort-Website",
+      "X-GitHub-Api-Version": "2022-11-28",
+    });
+    return Response.json({
+      assets: [
+        {
+          name: "StickerPort-0.2.0.dmg.sha256",
+          browser_download_url: `${LATEST_DMG_URL}.sha256`,
+        },
+        {
+          name: "StickerPort-0.2.0.dmg",
+          browser_download_url: LATEST_DMG_URL,
+        },
+      ],
+    });
+  };
+
+  const response = await render("/download");
+  assert.equal(response.status, 307);
+  assert.equal(response.headers.get("location"), LATEST_DMG_URL);
 });
 
 test("ships the validated StickerPort social card", async () => {
@@ -124,7 +160,8 @@ test("locks the page to one responsive viewport and preserves accessibility", as
   assert.match(css, /\.download-button:focus-visible/);
   assert.doesNotMatch(css, /animation[^;]*infinite/i);
   assert.match(config, /StickerPort — WhatsApp stickers for Signal/);
-  assert.match(config, /StickerPort-0\.1\.0\.dmg/);
+  assert.match(config, /downloadUrl:\s*"\/download"/);
+  assert.doesNotMatch(config, /releases\/download\/v\d|StickerPort-\d[^"]*\.dmg/);
   assert.match(layout, /generateMetadata/);
   assert.match(layout, /requestOrigin/);
   assert.match(layout, /siteConfig\.title/);
