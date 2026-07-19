@@ -22,6 +22,7 @@ export default function Home() {
             width={44}
             height={44}
             priority
+            unoptimized
           />
           <span className="brand-name">{siteConfig.name}</span>
         </a>
@@ -81,6 +82,7 @@ export default function Home() {
               width={112}
               height={112}
               priority
+              unoptimized
             />
             <div>
               <strong>StickerPort</strong>

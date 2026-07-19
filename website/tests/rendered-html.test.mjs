@@ -46,6 +46,14 @@ test("server-renders the StickerPort download hero", async () => {
     html,
     /aria-label="Download StickerPort 0\.1\.0 DMG for macOS"/,
   );
+  assert.equal(
+    (html.match(/src="\/stickerport-icon\.png"/g) ?? []).length,
+    2,
+  );
+  assert.doesNotMatch(
+    html,
+    /\/_vinext\/image\?[^"']*stickerport-icon(?:\.png|%2Epng)/i,
+  );
   assert.doesNotMatch(html, /codex-preview|Building your site|SkeletonPreview/);
   assert.doesNotMatch(html, /automatic Signal upload|direct Signal install/i);
 });
