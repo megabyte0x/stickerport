@@ -18,7 +18,8 @@ npm test
 
 Use `npm run build:cloudflare` to produce the Cloudflare Pages advanced-mode
 bundle in `dist/pages`. The Pages configuration template is
-`wrangler.pages.jsonc`.
+`wrangler.pages.jsonc`. The staging step also writes `_routes.json` so hashed
+client assets bypass the Vinext Worker and are served directly by Pages.
 
 ## Analytics
 
@@ -45,6 +46,7 @@ The production project is `stickerport` and the custom domain is
 
 ```bash
 npm run deploy:cloudflare
+npm run verify:production
 ```
 
 ## Included Shape

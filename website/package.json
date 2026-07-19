@@ -13,6 +13,7 @@
     "deploy:cloudflare": "npm run build:cloudflare && cd dist/pages && WRANGLER_WRITE_LOGS=false WRANGLER_LOG_PATH=../../.wrangler/wrangler.log ../../node_modules/.bin/wrangler pages deploy --branch main",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "npm run build:cloudflare && node --test tests/*.test.mjs",
+    "verify:production": "node scripts/verify-production-assets.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },

@@ -12,6 +12,7 @@ test("stages a Cloudflare Pages advanced-mode deployment", async () => {
     access(new URL("_worker/ssr/index.js", pagesOutput)),
     access(new URL("assets/", pagesOutput)),
     access(new URL("stickerport-icon.png", pagesOutput)),
+    access(new URL("_routes.json", pagesOutput)),
     access(new URL("wrangler.jsonc", pagesOutput)),
   ]);
   await assert.rejects(access(new URL("_worker/wrangler.json", pagesOutput)));
@@ -22,4 +23,13 @@ test("stages a Cloudflare Pages advanced-mode deployment", async () => {
   );
   assert.match(worker, /env\.ASSETS/);
   assert.match(worker, /export\s*\{\s*worker_entry_default as default\s*\}/);
+
+  const routes = JSON.parse(
+    await readFile(new URL("_routes.json", pagesOutput), "utf8"),
+  );
+  assert.deepEqual(routes, {
+    version: 1,
+    include: ["/*"],
+    exclude: ["/assets/*"],
+  });
 });

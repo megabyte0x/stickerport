@@ -22,6 +22,18 @@ await writeFile(
   new URL(".assetsignore", pagesDirectory),
   "wrangler.json\nwrangler.jsonc\n_worker\n.dev.vars\n",
 );
+await writeFile(
+  new URL("_routes.json", pagesDirectory),
+  `${JSON.stringify(
+    {
+      version: 1,
+      include: ["/*"],
+      exclude: ["/assets/*"],
+    },
+    null,
+    2,
+  )}\n`,
+);
 await rm(new URL("../.wrangler/deploy/config.json", import.meta.url), {
   force: true,
 });
