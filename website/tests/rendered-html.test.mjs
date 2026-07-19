@@ -5,6 +5,12 @@ import test from "node:test";
 const DOWNLOAD_URL =
   "https://github.com/megabyte0x/stickerport/releases/download/v0.1.0/StickerPort-0.1.0.dmg";
 const ogImage = new URL("../public/og.png", import.meta.url);
+const stickerAssets = [
+  "cuppy-smile.webp",
+  "cuppy-love.webp",
+  "cuppy-workhard.webp",
+  "cuppy-hi.webp",
+];
 
 async function render() {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -60,11 +66,38 @@ test("server-renders the StickerPort download hero", async () => {
 
 test("ships the validated StickerPort social card", async () => {
   await access(ogImage);
+  const image = await readFile(ogImage);
+  assert.deepEqual(
+    [...image.subarray(0, 8)],
+    [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  );
+  assert.equal(image.readUInt32BE(16), 1200);
+  assert.equal(image.readUInt32BE(20), 630);
+
   const response = await render();
   const html = await response.text();
   assert.match(html, /property="og:image"/);
   assert.match(html, /name="twitter:image"/);
   assert.match(html, /http:\/\/localhost\/og\.png/);
+});
+
+test("renders real WhatsApp sample stickers in a macOS app frame", async () => {
+  await Promise.all(
+    stickerAssets.map((asset) =>
+      access(new URL(`../public/stickers/${asset}`, import.meta.url)),
+    ),
+  );
+
+  const response = await render();
+  const html = await response.text();
+
+  assert.match(html, /class="mac-window"/);
+  assert.match(html, /class="window-toolbar"/);
+  assert.match(html, /class="sticker-shelf"/);
+  for (const asset of stickerAssets) {
+    assert.ok(html.includes(`src="/stickers/${asset}"`));
+  }
+  assert.doesNotMatch(html, /😂|🫶|😎/);
 });
 
 test("locks the page to one responsive viewport and preserves accessibility", async () => {
