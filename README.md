@@ -11,8 +11,8 @@ Signal Desktop's official sticker creator.
 
 ## Download
 
-Download `StickerPort-0.2.0.dmg` and its checksum from the
-[v0.2.0 release](https://github.com/megabyte0x/stickerport/releases/tag/v0.2.0).
+Download `StickerPort-0.2.1.dmg` and its checksum from the
+[v0.2.1 release](https://github.com/megabyte0x/stickerport/releases/tag/v0.2.1).
 StickerPort requires macOS 15 or newer.
 
 Release DMGs are signed with a Developer ID Application certificate and
@@ -23,7 +23,7 @@ asset so it can be replaced.
 To verify the download:
 
 ```sh
-shasum -a 256 -c StickerPort-0.2.0.dmg.sha256
+shasum -a 256 -c StickerPort-0.2.1.dmg.sha256
 ```
 
 ## Use StickerPort
@@ -35,13 +35,14 @@ shasum -a 256 -c StickerPort-0.2.0.dmg.sha256
    `group.net.whatsapp.WhatsApp.shared`.
 5. Select stickers from installed packs or Favorites.
 6. Choose **Export for Signal** and select an output folder.
-7. In Signal Desktop, choose **File → Create/Upload Sticker Pack**.
+7. Follow StickerPort's autoplaying handoff tutorial, or in Signal Desktop
+   choose **File → Create/Upload Sticker Pack**.
 8. Select the generated `Stickers` folder contents and use
    `emoji-reference.txt` while assigning emoji.
 
 The export folder also contains a short handoff guide. StickerPort opens the
-folder in Finder and can launch Signal Desktop, but Signal performs the upload
-and installation.
+folder in Finder, shows the four-step video, and can launch Signal Desktop, but
+Signal performs the upload and installation.
 
 ## Current limitations
 
@@ -84,7 +85,7 @@ xcodebuild \
 Build an ad-hoc DMG for local testing only:
 
 ```sh
-ALLOW_ADHOC_DMG=1 script/release_dmg.sh 0.2.0
+ALLOW_ADHOC_DMG=1 script/release_dmg.sh 0.2.1
 ```
 
 The DMG and checksum are written to `dist/`. The release script creates a
@@ -96,7 +97,7 @@ For a Developer ID release, install the certificate in the keychain and run:
 ```sh
 RELEASE_SIGNING_IDENTITY='Developer ID Application: Your Name (TEAMID)' \
 NOTARY_PROFILE='notarytool-profile' \
-script/release_dmg.sh 0.2.0
+script/release_dmg.sh 0.2.1
 ```
 
 `NOTARY_PROFILE` must name credentials already stored with
@@ -124,5 +125,5 @@ existing tag's assets using the fixed workflow from the selected branch.
 ## Releases and changelog
 
 User-visible changes are recorded in [CHANGELOG.md](CHANGELOG.md). Pushing a
-tag such as `v0.2.0` runs the GitHub release workflow, builds the DMG, creates
+tag such as `v0.2.1` runs the GitHub release workflow, builds the DMG, creates
 the GitHub release with generated notes, and attaches the DMG and checksum.

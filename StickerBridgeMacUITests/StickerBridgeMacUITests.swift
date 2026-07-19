@@ -36,4 +36,25 @@ final class StickerBridgeMacUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["hidden-file-1.webp"].exists)
         XCTAssertTrue(app.buttons["Export for Signal"].isEnabled)
     }
+
+    func testSignalHandoffShowsAutoplayTutorialAndOpenAction() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--design-preview",
+            "--signal-tutorial-preview"
+        ]
+        app.launch()
+
+        XCTAssertTrue(
+            app.staticTexts["Your stickers are ready"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.images["Signal Tutorial Video"].exists
+        )
+        XCTAssertTrue(app.buttons["Replay Signal Tutorial"].exists)
+        XCTAssertTrue(app.buttons["Open Signal Desktop"].exists)
+        XCTAssertTrue(app.buttons["Reveal Stickers Again"].exists)
+    }
 }

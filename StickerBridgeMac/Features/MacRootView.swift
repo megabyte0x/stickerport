@@ -9,6 +9,12 @@ struct MacRootView: View {
         ProcessInfo.processInfo.arguments.contains("--ui-testing")
     }
 
+    private var showsSignalTutorialOnLaunch: Bool {
+        ProcessInfo.processInfo.arguments.contains(
+            "--signal-tutorial-preview"
+        )
+    }
+
     private var isHostedUnitTesting: Bool {
         ProcessInfo.processInfo.environment[
             "XCTestConfigurationFilePath"
@@ -30,6 +36,9 @@ struct MacRootView: View {
         .frame(minWidth: 760, minHeight: 640)
         .preferredColorScheme(.light)
         .task {
+            if showsSignalTutorialOnLaunch {
+                showingSignalPrompt = true
+            }
             guard !isUITesting,
                   !isHostedUnitTesting,
                   store.phase == .disconnected else {
@@ -42,19 +51,8 @@ struct MacRootView: View {
                 showingSignalPrompt = true
             }
         }
-        .confirmationDialog(
-            "Your stickers are ready",
-            isPresented: $showingSignalPrompt,
-            titleVisibility: .visible
-        ) {
-            Button("Open Signal Desktop") {
-                store.openSignalDesktop()
-            }
-            Button("Not Now", role: .cancel) {}
-        } message: {
-            Text(
-                "The sticker folder is open in Finder. In Signal Desktop, choose File → Create/Upload Sticker Pack."
-            )
+        .sheet(isPresented: $showingSignalPrompt) {
+            SignalHandoffSheet(store: store)
         }
     }
 

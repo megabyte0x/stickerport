@@ -7,6 +7,13 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-19
+
+### Added
+
+- The post-export Signal handoff now includes an autoplaying, silent tutorial
+  showing how to select the generated stickers, finish the pack, and install it.
+
 ## [0.2.0] - 2026-07-19
 
 ### Changed
@@ -37,6 +44,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   Developer ID signing and notarization.
 - Automated GitHub release notes and tag-triggered DMG publishing.
 
-[Unreleased]: https://github.com/megabyte0x/stickerport/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/megabyte0x/stickerport/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/megabyte0x/stickerport/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/megabyte0x/stickerport/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/megabyte0x/stickerport/releases/tag/v0.1.0
