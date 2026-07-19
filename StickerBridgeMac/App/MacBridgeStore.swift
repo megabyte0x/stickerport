@@ -14,9 +14,9 @@ enum MacBridgePhase: Equatable {
 @Observable
 final class MacBridgeStore {
     private(set) var phase: MacBridgePhase = .disconnected
-    private(set) var packs: [MacWhatsAppPack] = []
-    private(set) var selectedPackID: Int64?
+    private(set) var sources: [MacWhatsAppPack] = []
     private(set) var selectedStickerIDs: Set<Int64> = []
+    private(set) var selectionMessage: String?
     private(set) var exportResult: SignalFolderExport?
     private(set) var signalLaunchFailed = false
 
@@ -42,11 +42,30 @@ final class MacBridgeStore {
         self.handoff = handoff
     }
 
-    var selectedPack: MacWhatsAppPack? {
-        guard let selectedPackID else {
-            return nil
+    var stickerPacks: [MacWhatsAppPack] {
+        sources.filter { $0.category == .stickerPacks }
+    }
+
+    var favorites: [MacWhatsAppSticker] {
+        sources
+            .first(where: { $0.category == .favorites })?
+            .stickers ?? []
+    }
+
+    var selectedStickers: [MacWhatsAppSticker] {
+        var seen: Set<Int64> = []
+        return orderedAvailableStickers.filter {
+            selectedStickerIDs.contains($0.id)
+                && seen.insert($0.id).inserted
         }
-        return packs.first { $0.id == selectedPackID }
+    }
+
+    private var orderedAvailableStickers: [MacWhatsAppSticker] {
+        stickerPacks.flatMap(\.stickers) + favorites
+    }
+
+    private var availableStickerIDs: Set<Int64> {
+        Set(orderedAvailableStickers.map(\.id))
     }
 
     var canExport: Bool {
@@ -63,10 +82,13 @@ final class MacBridgeStore {
         guard phase != .loading, !isExporting else {
             return
         }
+        phase = .loading
         guard let url = whatsAppPicker.chooseWhatsAppFolder() else {
+            phase = .failed(
+                "WhatsApp folder access is required. Choose Try Again to grant access."
+            )
             return
         }
-        phase = .loading
         do {
             let reader = self.reader
             let loaded = try await Task.detached(
@@ -74,29 +96,45 @@ final class MacBridgeStore {
             ) {
                 try reader.load(from: url)
             }.value
-            packs = loaded
-            guard let first = loaded.first else {
+            guard !loaded.isEmpty else {
                 throw WhatsAppMVPError.noLocalPacks
             }
+            sources = loaded
+            selectedStickerIDs = []
+            selectionMessage = nil
             authorizedInputRoot = canonicalized(url)
-            selectPack(first.id)
             phase = .ready
         } catch {
             phase = .failed(error.localizedDescription)
         }
     }
 
-    func selectPack(_ id: Int64) {
-        guard !isExporting,
-              let pack = packs.first(where: { $0.id == id }) else {
+    func sources(in category: MacStickerCategory) -> [MacWhatsAppPack] {
+        sources.filter { $0.category == category }
+    }
+
+    func stickers(in category: MacStickerCategory) -> [MacWhatsAppSticker] {
+        sources(in: category).flatMap(\.stickers)
+    }
+
+    func selectAll(in category: MacStickerCategory) {
+        guard !isExporting else {
             return
         }
-        selectedPackID = id
-        replaceSelection(with: Set(pack.stickers.map(\.id)))
+        let ids = Set(stickers(in: category).map(\.id))
+        applySelection(selectedStickerIDs.union(ids))
+    }
+
+    func clearSelection(in category: MacStickerCategory) {
+        guard !isExporting else {
+            return
+        }
+        let ids = Set(stickers(in: category).map(\.id))
+        applySelection(selectedStickerIDs.subtracting(ids))
     }
 
     func setSticker(_ id: Int64, isSelected: Bool) {
-        guard !isExporting else {
+        guard !isExporting, availableStickerIDs.contains(id) else {
             return
         }
         var selection = selectedStickerIDs
@@ -105,38 +143,31 @@ final class MacBridgeStore {
         } else {
             selection.remove(id)
         }
-        replaceSelection(with: selection)
-    }
-
-    func selectAll() {
-        guard !isExporting, let selectedPack else {
-            return
-        }
-        replaceSelection(with: Set(selectedPack.stickers.map(\.id)))
-    }
-
-    func clearSelection() {
-        guard !isExporting else {
-            return
-        }
-        replaceSelection(with: [])
+        applySelection(selection)
     }
 
     func createSignalFolder() async {
         guard !isExporting else {
             return
         }
-        guard let pack = selectedPack,
-              !selectedStickerIDs.isEmpty else {
+        let stickers = selectedStickers
+        guard !stickers.isEmpty else {
             phase = .failed("Select at least one sticker.")
             return
         }
-        guard selectedStickerIDs.count <= 200 else {
+        guard stickers.count <= SignalStickerRules.maximumStickerCount else {
             phase = .failed(
                 "Signal packs support at most 200 stickers."
             )
             return
         }
+        let exportPack = MacWhatsAppPack(
+            id: MacWhatsAppPack.combinedExportID,
+            category: .stickerPacks,
+            title: "WhatsApp Selection",
+            author: "WhatsApp",
+            stickers: stickers
+        )
         guard let parent = exportPicker.chooseExportParent() else {
             return
         }
@@ -155,12 +186,12 @@ final class MacBridgeStore {
         let operationGeneration = exportGeneration
         do {
             let exporter = self.exporter
-            let ids = selectedStickerIDs
+            let ids = Set(stickers.map(\.id))
             let result = try await Task.detached(
                 priority: .userInitiated
             ) {
                 try exporter.export(
-                    pack: pack,
+                    pack: exportPack,
                     selectedStickerIDs: ids,
                     to: parent
                 )
@@ -195,16 +226,22 @@ final class MacBridgeStore {
     func startOver() {
         exportGeneration &+= 1
         phase = .disconnected
-        packs = []
-        selectedPackID = nil
+        sources = []
         selectedStickerIDs = []
+        selectionMessage = nil
         exportResult = nil
         signalLaunchFailed = false
         authorizedInputRoot = nil
     }
 
-    private func replaceSelection(with selection: Set<Int64>) {
+    private func applySelection(_ selection: Set<Int64>) {
+        guard selection.count <= SignalStickerRules.maximumStickerCount else {
+            selectionMessage =
+                "Signal supports at most 200 stickers. Choose fewer stickers."
+            return
+        }
         selectedStickerIDs = selection
+        selectionMessage = nil
         exportResult = nil
         signalLaunchFailed = false
         if phase == .finished {

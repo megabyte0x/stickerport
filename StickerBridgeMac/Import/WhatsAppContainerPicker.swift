@@ -109,9 +109,11 @@ struct WhatsAppContainerPicker: WhatsAppFolderPicking {
 
     func chooseWhatsAppFolder() -> URL? {
         let panel = NSOpenPanel()
-        panel.title = "Choose WhatsApp Sticker Data"
-        panel.message = "Quit WhatsApp completely, then choose group.net.whatsapp.WhatsApp.shared. StickerBridge reads stickers only and never changes WhatsApp data."
-        panel.prompt = "Connect WhatsApp"
+        panel.title = "Allow WhatsApp Sticker Access"
+        panel.message = """
+        StickerBridge found WhatsApp’s sticker folder. Quit WhatsApp, then allow read-only import from group.net.whatsapp.WhatsApp.shared.
+        """
+        panel.prompt = "Allow Access"
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.canCreateDirectories = false

@@ -2,7 +2,7 @@ import XCTest
 
 @MainActor
 final class StickerBridgeMacUITests: XCTestCase {
-    func testAppLaunchesAtExplicitAuthorizationBoundary() {
+    func testAppLaunchesAndPreparesAutomaticWhatsAppAccess() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing"]
         app.launch()
@@ -11,6 +11,9 @@ final class StickerBridgeMacUITests: XCTestCase {
             app.staticTexts["Prepare WhatsApp stickers for Signal"]
                 .waitForExistence(timeout: 5)
         )
-        XCTAssertTrue(app.buttons["Connect WhatsApp"].exists)
+        XCTAssertTrue(
+            app.staticTexts["Preparing WhatsApp access"].exists
+        )
+        XCTAssertFalse(app.buttons["Connect WhatsApp"].exists)
     }
 }
