@@ -7,14 +7,18 @@
   },
   "scripts": {
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
+    "dev:cloudflare": "npm run build:cloudflare && cd dist/pages && WRANGLER_WRITE_LOGS=false WRANGLER_LOG_PATH=../../.wrangler/wrangler.log ../../node_modules/.bin/wrangler pages dev",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
+    "build:cloudflare": "npm run build && node scripts/prepare-cloudflare-pages.mjs",
+    "deploy:cloudflare": "npm run build:cloudflare && cd dist/pages && WRANGLER_WRITE_LOGS=false WRANGLER_LOG_PATH=../../.wrangler/wrangler.log ../../node_modules/.bin/wrangler pages deploy --branch main",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "test": "npm run build:cloudflare && node --test tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
+    "mixpanel-browser": "2.70.0",
     "next": "16.2.6",
     "react": "19.2.6",
     "react-dom": "19.2.6"

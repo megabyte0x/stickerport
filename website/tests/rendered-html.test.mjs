@@ -143,10 +143,11 @@ test("renders real WhatsApp sample stickers in a macOS app frame", async () => {
 });
 
 test("locks the page to one responsive viewport and preserves accessibility", async () => {
-  const [css, layout, config, packageJson] = await Promise.all([
+  const [css, layout, config, analytics, packageJson] = await Promise.all([
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/site-config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/analytics.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
@@ -166,6 +167,15 @@ test("locks the page to one responsive viewport and preserves accessibility", as
   assert.match(layout, /requestOrigin/);
   assert.match(layout, /siteConfig\.title/);
   assert.match(layout, /stickerport-icon\.png/);
+  assert.match(layout, /<Analytics \/>/);
+  assert.match(analytics, /Landing Page Viewed/);
+  assert.match(analytics, /Download Clicked/);
+  assert.match(analytics, /autocapture:\s*false/);
+  assert.match(analytics, /disable_persistence:\s*true/);
+  assert.match(analytics, /ip:\s*false/);
+  assert.match(analytics, /record_sessions_percent:\s*0/);
+  assert.match(analytics, /ignore_dnt:\s*false/);
+  assert.match(analytics, /NEXT_PUBLIC_MIXPANEL_TOKEN/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 
   await access(new URL("../public/stickerport-icon.png", import.meta.url));

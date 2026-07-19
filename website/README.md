@@ -1,8 +1,7 @@
-# vinext-starter
+# StickerPort website
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+The public landing page for StickerPort, running on
+[vinext](https://github.com/cloudflare/vinext) and Cloudflare Pages.
 
 ## Prerequisites
 
@@ -11,16 +10,47 @@ Drizzle support.
 ## Quick Start
 
 ```bash
-npm install
+npm ci
 npm run dev
 npm run build
+npm test
 ```
 
-This starter does not use `wrangler.jsonc`.
+Use `npm run build:cloudflare` to produce the Cloudflare Pages advanced-mode
+bundle in `dist/pages`. The Pages configuration template is
+`wrangler.pages.jsonc`.
+
+## Analytics
+
+The site sends two focused events to Mixpanel:
+
+- `Landing Page Viewed`
+- `Download Clicked`
+
+Autocapture, session recording, IP geolocation, and persistent visitor storage
+are disabled. Configure the public project settings from `.env.example` before
+building:
+
+```bash
+cp .env.example .env.production.local
+```
+
+Set `NEXT_PUBLIC_MIXPANEL_TOKEN` to the Mixpanel project token and keep
+`NEXT_PUBLIC_MIXPANEL_API_HOST` aligned with the project's data residency.
+
+## Cloudflare deployment
+
+The production project is `stickerport` and the custom domain is
+`stickerport.megabyte.sh`.
+
+```bash
+npm run deploy:cloudflare
+```
 
 ## Included Shape
 
 - edit site code under `app/`
+- edit Cloudflare packaging under `scripts/prepare-cloudflare-pages.mjs`
 - `.openai/hosting.json` declares optional Sites D1 and R2 bindings
 - `vite.config.ts` simulates declared bindings for local development
 - `db/schema.ts` starts intentionally empty

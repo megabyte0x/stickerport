@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { TrackedDownloadLink } from "./analytics";
 import { siteConfig } from "./site-config";
 
 const stickers = [
@@ -71,16 +72,15 @@ export default function Home() {
               <p className="lede">{siteConfig.supportingCopy}</p>
 
               <div className="actions">
-                <a
+                <TrackedDownloadLink
                   className="download-button"
                   href={siteConfig.downloadUrl}
-                  aria-label="Download the latest StickerPort DMG for macOS"
                 >
                   <span className="download-symbol" aria-hidden="true">
                     ↓
                   </span>
                   <span>Download for Mac</span>
-                </a>
+                </TrackedDownloadLink>
                 <p className="compatibility">{siteConfig.compatibility}</p>
               </div>
 
