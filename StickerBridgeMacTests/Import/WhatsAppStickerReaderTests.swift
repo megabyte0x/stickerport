@@ -131,7 +131,11 @@ final class WhatsAppStickerReaderTests: XCTestCase {
     }
 
     func testLoadsInstalledPacksAndRegularFavoritesAsSeparateCategories() throws {
-        let fixture = try WhatsAppSQLiteFixture.make(includeFavorites: true)
+        let fixture = try WhatsAppSQLiteFixture.make(
+            includeFavorites: true,
+            newestFavoriteStickerPackID: 10,
+            includeDistinctStickerSharingNewestFavoriteHash: true
+        )
         defer { try? FileManager.default.removeItem(at: fixture.rootURL) }
         let before = try snapshot(of: fixture.rootURL)
 
@@ -140,11 +144,17 @@ final class WhatsAppStickerReaderTests: XCTestCase {
         XCTAssertEqual(sources.map(\.category), [.favorites, .stickerPacks])
         XCTAssertEqual(sources.map(\.title), ["Favorites", "Fixture Pack"])
         XCTAssertEqual(sources[0].id, MacWhatsAppPack.favoritesID)
-        XCTAssertEqual(sources[0].stickers.map(\.id), [202, 201])
-        XCTAssertEqual(sources[0].stickers.map(\.order), [0, 1])
+        XCTAssertEqual(sources[0].stickers.map(\.id), [202, 203, 201])
+        XCTAssertEqual(sources[0].stickers.map(\.order), [0, 1, 2])
+        XCTAssertEqual(sources[1].stickers.map(\.id), [100, 202, 101])
+        XCTAssertEqual(sources[0].stickers[0].id, sources[1].stickers[1].id)
         XCTAssertEqual(
             sources[0].stickers.map(\.data),
-            [Data("favorite-new".utf8), Data("favorite-old".utf8)]
+            [
+                Data("favorite-new".utf8),
+                Data("favorite-same-hash".utf8),
+                Data("favorite-old".utf8)
+            ]
         )
         XCTAssertEqual(try snapshot(of: fixture.rootURL), before)
     }

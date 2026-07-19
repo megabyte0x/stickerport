@@ -14,7 +14,9 @@ struct WhatsAppSQLiteFixture {
         relativeImagePathDeclaredType: String = "VARCHAR",
         leaveCommittedPackInWAL: Bool = false,
         includeFavorites: Bool = false,
-        favoriteMembershipValueHex: String = "01"
+        favoriteMembershipValueHex: String = "01",
+        newestFavoriteStickerPackID: Int64? = nil,
+        includeDistinctStickerSharingNewestFavoriteHash: Bool = false
     ) throws -> WhatsAppSQLiteFixture {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -42,6 +44,13 @@ struct WhatsAppSQLiteFixture {
         try Data("favorite-new".utf8).write(
             to: favoriteDirectory.appendingPathComponent("new.webp")
         )
+        if includeDistinctStickerSharingNewestFavoriteHash {
+            try Data("favorite-same-hash".utf8).write(
+                to: favoriteDirectory.appendingPathComponent(
+                    "same-hash.webp"
+                )
+            )
+        }
 
         let oldFavoriteHash = String(repeating: "A", count: 43) + "="
         let newFavoriteHash = String(repeating: "B", count: 43) + "="
@@ -116,6 +125,24 @@ struct WhatsAppSQLiteFixture {
               '😂', 'image/webp', '\(newFavoriteHash)'
             );
             """)
+            if let newestFavoriteStickerPackID {
+                try execute(database, """
+                UPDATE ZWACDSTICKER
+                SET ZSTICKERPACK = \(newestFavoriteStickerPackID)
+                WHERE Z_PK = 202;
+                """)
+            }
+            if includeDistinctStickerSharingNewestFavoriteHash {
+                try execute(database, """
+                INSERT INTO ZWACDSTICKER (
+                  Z_PK, ZSTICKERPACK, ZSORT,
+                  ZRELATIVEIMAGEPATH, ZEMOJIS, ZMIMETYPE, ZFILEHASH
+                ) VALUES (
+                  203, NULL, 0, 'favorites/same-hash.webp',
+                  '🧪', 'image/webp', '\(newFavoriteHash)'
+                );
+                """)
+            }
         }
 
         sqlite3_close(database)

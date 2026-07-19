@@ -292,7 +292,7 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
               COALESCE(ZEMOJIS, ''),
               COALESCE(ZMIMETYPE, '')
             FROM ZWACDSTICKER
-            WHERE ZSTICKERPACK IS NULL
+            ORDER BY Z_PK
             """
         ) {
             FavoriteMediaRow(
@@ -305,34 +305,36 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
         }
 
         let rowsByHash = Dictionary(grouping: mediaRows, by: \.fileHash)
-        var seenHashes: Set<String> = []
+        var seenStickerIDs: Set<Int64> = []
         var stickers: [MacWhatsAppSticker] = []
 
         for membership in memberships {
-            guard seenHashes.insert(membership.fileHash).inserted,
-                  let matches = rowsByHash[membership.fileHash],
-                  matches.count == 1,
-                  let row = matches.first,
-                  row.mimeType == "image/webp",
-                  let mediaURL = safeStickerURL(
-                      relativePath: row.relativePath,
-                      stickersURL: stickersURL
-                  ),
-                  let data = try? Data(
-                      contentsOf: mediaURL,
-                      options: [.mappedIfSafe]
-                  ) else {
+            guard let matches = rowsByHash[membership.fileHash] else {
                 continue
             }
-            stickers.append(
-                MacWhatsAppSticker(
-                    id: row.stickerID,
-                    order: stickers.count,
-                    relativePath: row.relativePath,
-                    emoji: firstEmoji(row.rawEmoji),
-                    data: data
+            for row in matches {
+                guard row.mimeType == "image/webp",
+                      let mediaURL = safeStickerURL(
+                          relativePath: row.relativePath,
+                          stickersURL: stickersURL
+                      ),
+                      let data = try? Data(
+                          contentsOf: mediaURL,
+                          options: [.mappedIfSafe]
+                      ),
+                      seenStickerIDs.insert(row.stickerID).inserted else {
+                    continue
+                }
+                stickers.append(
+                    MacWhatsAppSticker(
+                        id: row.stickerID,
+                        order: stickers.count,
+                        relativePath: row.relativePath,
+                        emoji: firstEmoji(row.rawEmoji),
+                        data: data
+                    )
                 )
-            )
+            }
         }
         return stickers
     }
