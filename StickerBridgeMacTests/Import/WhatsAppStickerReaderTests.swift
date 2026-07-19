@@ -159,6 +159,28 @@ final class WhatsAppStickerReaderTests: XCTestCase {
         XCTAssertEqual(sources.map(\.title), ["Fixture Pack"])
     }
 
+    func testRejectsIfAbsentFavoritesDatabaseAppearsDuringRead() throws {
+        let fixture = try WhatsAppSQLiteFixture.make(includeFavorites: false)
+        defer { try? FileManager.default.removeItem(at: fixture.rootURL) }
+        let favoritesDatabaseURL = fixture.favoritesDatabaseURL
+        let reader = WhatsAppStickerReader(
+            expectedContainerURL: fixture.rootURL,
+            isWhatsAppRunning: { false },
+            afterImmutableRead: {
+                try? Data("appeared during read".utf8).write(
+                    to: favoritesDatabaseURL
+                )
+            }
+        )
+
+        XCTAssertThrowsError(try reader.load(from: fixture.rootURL)) {
+            XCTAssertEqual(
+                $0 as? WhatsAppMVPError,
+                .sourceChangedDuringRead
+            )
+        }
+    }
+
     func testUnsupportedFavoriteRowsAreSkippedWithoutHidingInstalledPacks() throws {
         let fixture = try WhatsAppSQLiteFixture.make(
             includeFavorites: true,

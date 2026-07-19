@@ -75,20 +75,15 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
             throw WhatsAppMVPError.whatsappIsRunning
         }
 
-        var favoritesIsDirectory: ObjCBool = false
-        let hasFavoritesDatabase = FileManager.default.fileExists(
-            atPath: favoritesDatabaseURL.path,
-            isDirectory: &favoritesIsDirectory
-        ) && !favoritesIsDirectory.boolValue
-
         let stickerSnapshotBeforeRead = try SQLiteSnapshot.capture(
             databaseURL: stickerDatabaseURL
         )
-        let favoritesSnapshotBeforeRead: SQLiteSnapshot? = hasFavoritesDatabase
-            ? try SQLiteSnapshot.capture(databaseURL: favoritesDatabaseURL)
-            : nil
+        let favoritesSnapshotBeforeRead = try SQLiteSnapshot.capture(
+            databaseURL: favoritesDatabaseURL
+        )
+        let hasFavoritesDatabase = favoritesSnapshotBeforeRead.database.exists
         guard !stickerSnapshotBeforeRead.writeAheadLog.isNonempty,
-              favoritesSnapshotBeforeRead?.writeAheadLog.isNonempty != true else {
+              !favoritesSnapshotBeforeRead.writeAheadLog.isNonempty else {
             throw WhatsAppMVPError.uncheckpointedWriteAheadLog
         }
 
@@ -233,11 +228,9 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
             == stickerSnapshotBeforeRead else {
             throw WhatsAppMVPError.sourceChangedDuringRead
         }
-        if let favoritesSnapshotBeforeRead {
-            guard try SQLiteSnapshot.capture(databaseURL: favoritesDatabaseURL)
-                == favoritesSnapshotBeforeRead else {
-                throw WhatsAppMVPError.sourceChangedDuringRead
-            }
+        guard try SQLiteSnapshot.capture(databaseURL: favoritesDatabaseURL)
+            == favoritesSnapshotBeforeRead else {
+            throw WhatsAppMVPError.sourceChangedDuringRead
         }
         guard !sources.isEmpty else {
             throw WhatsAppMVPError.noLocalPacks
@@ -477,6 +470,13 @@ private struct SQLiteSnapshot: Equatable {
 private enum FileSnapshot: Equatable {
     case absent
     case bytes(Data)
+
+    var exists: Bool {
+        guard case .bytes = self else {
+            return false
+        }
+        return true
+    }
 
     var isNonempty: Bool {
         guard case .bytes(let data) = self else {
