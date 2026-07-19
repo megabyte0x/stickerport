@@ -8,11 +8,34 @@ struct MacWhatsAppSticker: Identifiable, Equatable, Sendable {
     let data: Data
 }
 
+enum MacStickerCategory: String, Equatable, Sendable {
+    case stickerPacks
+    case favorites
+}
+
 struct MacWhatsAppPack: Identifiable, Equatable, Sendable {
+    static let favoritesID: Int64 = -1
+    static let combinedExportID: Int64 = -2
+
     let id: Int64
+    let category: MacStickerCategory
     let title: String
     let author: String
     let stickers: [MacWhatsAppSticker]
+
+    init(
+        id: Int64,
+        category: MacStickerCategory = .stickerPacks,
+        title: String,
+        author: String,
+        stickers: [MacWhatsAppSticker]
+    ) {
+        self.id = id
+        self.category = category
+        self.title = title
+        self.author = author
+        self.stickers = stickers
+    }
 }
 
 struct SignalFolderExport: Equatable, Sendable {
@@ -54,7 +77,7 @@ enum WhatsAppMVPError: LocalizedError, Equatable {
         case .unsupportedSchema(let detail):
             "This WhatsApp version is not supported by the MVP. \(detail)"
         case .noLocalPacks:
-            "No locally installed WhatsApp sticker packs were found."
+            "No locally stored WhatsApp sticker packs or Favorites were found."
         case .sqlite(let message):
             "WhatsApp sticker metadata could not be read: \(message)"
         }

@@ -4,6 +4,7 @@ import SQLite3
 struct WhatsAppSQLiteFixture {
     let rootURL: URL
     let databaseURL: URL
+    let favoritesDatabaseURL: URL
     private let retainedWALConnection: RetainedSQLiteConnection?
 
     static func make(
@@ -11,7 +12,9 @@ struct WhatsAppSQLiteFixture {
         firstRelativePath: String = "pack/one.webp",
         installedPackEntity: Int64 = 2,
         relativeImagePathDeclaredType: String = "VARCHAR",
-        leaveCommittedPackInWAL: Bool = false
+        leaveCommittedPackInWAL: Bool = false,
+        includeFavorites: Bool = false,
+        favoriteMembershipValueHex: String = "01"
     ) throws -> WhatsAppSQLiteFixture {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -27,6 +30,21 @@ struct WhatsAppSQLiteFixture {
         try Data("second".utf8).write(
             to: stickerDirectory.appendingPathComponent("two.webp")
         )
+        let favoriteDirectory = root
+            .appendingPathComponent("stickers/favorites", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: favoriteDirectory,
+            withIntermediateDirectories: true
+        )
+        try Data("favorite-old".utf8).write(
+            to: favoriteDirectory.appendingPathComponent("old.webp")
+        )
+        try Data("favorite-new".utf8).write(
+            to: favoriteDirectory.appendingPathComponent("new.webp")
+        )
+
+        let oldFavoriteHash = String(repeating: "A", count: 43) + "="
+        let newFavoriteHash = String(repeating: "B", count: 43) + "="
 
         let databaseURL = root.appendingPathComponent("Sticker.sqlite")
         var database: OpaquePointer?
@@ -68,22 +86,78 @@ struct WhatsAppSQLiteFixture {
               ZACCESSIBILITYTEXT VARCHAR,
               ZWIDTH INTEGER,
               ZHEIGHT INTEGER,
-              ZMIMETYPE VARCHAR
+              ZMIMETYPE VARCHAR,
+              ZFILEHASH VARCHAR
             );
             INSERT INTO ZWACDSTICKER (
               Z_PK, ZSTICKERPACK, ZSORT,
-              ZRELATIVEIMAGEPATH, ZEMOJIS
-            )
-              VALUES (101, 10, 1, 'pack/two.webp', '😂 😆');
+              ZRELATIVEIMAGEPATH, ZEMOJIS, ZMIMETYPE, ZFILEHASH
+            ) VALUES (
+              101, 10, 1, 'pack/two.webp', '😂 😆', 'image/webp', NULL
+            );
             INSERT INTO ZWACDSTICKER (
               Z_PK, ZSTICKERPACK, ZSORT,
-              ZRELATIVEIMAGEPATH, ZEMOJIS
-            )
-              VALUES (100, 10, 0, '\(escapedPath)', '☕ 🙂');
+              ZRELATIVEIMAGEPATH, ZEMOJIS, ZMIMETYPE, ZFILEHASH
+            ) VALUES (
+              100, 10, 0, '\(escapedPath)', '☕ 🙂', 'image/webp', NULL
+            );
+            INSERT INTO ZWACDSTICKER (
+              Z_PK, ZSTICKERPACK, ZSORT,
+              ZRELATIVEIMAGEPATH, ZEMOJIS, ZMIMETYPE, ZFILEHASH
+            ) VALUES (
+              201, NULL, 0, 'favorites/old.webp',
+              '🙂', 'image/webp', '\(oldFavoriteHash)'
+            );
+            INSERT INTO ZWACDSTICKER (
+              Z_PK, ZSTICKERPACK, ZSORT,
+              ZRELATIVEIMAGEPATH, ZEMOJIS, ZMIMETYPE, ZFILEHASH
+            ) VALUES (
+              202, NULL, 0, 'favorites/new.webp',
+              '😂', 'image/webp', '\(newFavoriteHash)'
+            );
             """)
         }
 
         sqlite3_close(database)
+
+        let favoritesDatabaseURL = root.appendingPathComponent(
+            "BackedUpKeyValue.sqlite"
+        )
+        if includeFavorites {
+            var favoritesDatabase: OpaquePointer?
+            guard sqlite3_open(
+                favoritesDatabaseURL.path,
+                &favoritesDatabase
+            ) == SQLITE_OK, let favoritesDatabase else {
+                throw CocoaError(.fileWriteUnknown)
+            }
+            do {
+                try execute(favoritesDatabase, """
+                CREATE TABLE ZWAKEYVALUEELEMENT (
+                  Z_PK INTEGER PRIMARY KEY,
+                  Z_ENT INTEGER,
+                  Z_OPT INTEGER,
+                  ZSORT INTEGER,
+                  ZVERSION INTEGER,
+                  ZDATE TIMESTAMP,
+                  ZKEY VARCHAR,
+                  ZNAMESPACE VARCHAR,
+                  ZVALUE BLOB
+                );
+                INSERT INTO ZWAKEYVALUEELEMENT (
+                  Z_PK, ZSORT, ZDATE, ZKEY, ZNAMESPACE, ZVALUE
+                ) VALUES
+                  (1, 1, 1000.0, '\(oldFavoriteHash)', 'fs.v2',
+                   X'\(favoriteMembershipValueHex)'),
+                  (2, 2, 2000.0, '\(newFavoriteHash)', 'fs.v2',
+                   X'\(favoriteMembershipValueHex)');
+                """)
+                sqlite3_close(favoritesDatabase)
+            } catch {
+                sqlite3_close(favoritesDatabase)
+                throw error
+            }
+        }
 
         let retainedWALConnection: RetainedSQLiteConnection?
         if leaveCommittedPackInWAL {
@@ -97,6 +171,7 @@ struct WhatsAppSQLiteFixture {
         return WhatsAppSQLiteFixture(
             rootURL: root,
             databaseURL: databaseURL,
+            favoritesDatabaseURL: favoritesDatabaseURL,
             retainedWALConnection: retainedWALConnection
         )
     }

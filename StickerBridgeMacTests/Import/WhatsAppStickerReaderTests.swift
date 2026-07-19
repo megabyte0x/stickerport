@@ -130,6 +130,70 @@ final class WhatsAppStickerReaderTests: XCTestCase {
         )
     }
 
+    func testLoadsInstalledPacksAndRegularFavoritesAsSeparateCategories() throws {
+        let fixture = try WhatsAppSQLiteFixture.make(includeFavorites: true)
+        defer { try? FileManager.default.removeItem(at: fixture.rootURL) }
+        let before = try snapshot(of: fixture.rootURL)
+
+        let sources = try reader(for: fixture).load(from: fixture.rootURL)
+
+        XCTAssertEqual(sources.map(\.category), [.favorites, .stickerPacks])
+        XCTAssertEqual(sources.map(\.title), ["Favorites", "Fixture Pack"])
+        XCTAssertEqual(sources[0].id, MacWhatsAppPack.favoritesID)
+        XCTAssertEqual(sources[0].stickers.map(\.id), [202, 201])
+        XCTAssertEqual(sources[0].stickers.map(\.order), [0, 1])
+        XCTAssertEqual(
+            sources[0].stickers.map(\.data),
+            [Data("favorite-new".utf8), Data("favorite-old".utf8)]
+        )
+        XCTAssertEqual(try snapshot(of: fixture.rootURL), before)
+    }
+
+    func testMissingFavoritesDatabaseKeepsInstalledPacksAvailable() throws {
+        let fixture = try WhatsAppSQLiteFixture.make(includeFavorites: false)
+        defer { try? FileManager.default.removeItem(at: fixture.rootURL) }
+
+        let sources = try reader(for: fixture).load(from: fixture.rootURL)
+
+        XCTAssertEqual(sources.map(\.category), [.stickerPacks])
+        XCTAssertEqual(sources.map(\.title), ["Fixture Pack"])
+    }
+
+    func testUnsupportedFavoriteRowsAreSkippedWithoutHidingInstalledPacks() throws {
+        let fixture = try WhatsAppSQLiteFixture.make(
+            includeFavorites: true,
+            favoriteMembershipValueHex: "02"
+        )
+        defer { try? FileManager.default.removeItem(at: fixture.rootURL) }
+
+        let sources = try reader(for: fixture).load(from: fixture.rootURL)
+
+        XCTAssertEqual(sources.map(\.category), [.stickerPacks])
+        XCTAssertEqual(sources.map(\.title), ["Fixture Pack"])
+    }
+
+    func testRejectsIfFavoritesDatabaseChangesDuringRead() throws {
+        let fixture = try WhatsAppSQLiteFixture.make(includeFavorites: true)
+        defer { try? FileManager.default.removeItem(at: fixture.rootURL) }
+        let favoritesSHM = URL(
+            fileURLWithPath: fixture.favoritesDatabaseURL.path + "-shm"
+        )
+        let reader = WhatsAppStickerReader(
+            expectedContainerURL: fixture.rootURL,
+            isWhatsAppRunning: { false },
+            afterImmutableRead: {
+                try? Data("changed during read".utf8).write(to: favoritesSHM)
+            }
+        )
+
+        XCTAssertThrowsError(try reader.load(from: fixture.rootURL)) {
+            XCTAssertEqual(
+                $0 as? WhatsAppMVPError,
+                .sourceChangedDuringRead
+            )
+        }
+    }
+
     func testRejectsAnUncheckpointedWALWithoutChangingAnySidecar() throws {
         let fixture = try WhatsAppSQLiteFixture.make(
             leaveCommittedPackInWAL: true

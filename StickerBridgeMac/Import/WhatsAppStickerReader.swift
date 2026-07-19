@@ -44,14 +44,17 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
                 expectedPath: expectedRoot.path
             )
         }
-        let databaseURL = root.appendingPathComponent("Sticker.sqlite")
+        let stickerDatabaseURL = root.appendingPathComponent("Sticker.sqlite")
+        let favoritesDatabaseURL = root.appendingPathComponent(
+            "BackedUpKeyValue.sqlite"
+        )
         let stickersURL = root.appendingPathComponent(
             "stickers",
             isDirectory: true
         )
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(
-            atPath: databaseURL.path,
+            atPath: stickerDatabaseURL.path,
             isDirectory: &isDirectory
         ), !isDirectory.boolValue else {
             throw WhatsAppMVPError.missingDatabase
@@ -72,19 +75,44 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
             throw WhatsAppMVPError.whatsappIsRunning
         }
 
-        let snapshotBeforeRead = try SQLiteSnapshot.capture(
-            databaseURL: databaseURL
+        var favoritesIsDirectory: ObjCBool = false
+        let hasFavoritesDatabase = FileManager.default.fileExists(
+            atPath: favoritesDatabaseURL.path,
+            isDirectory: &favoritesIsDirectory
+        ) && !favoritesIsDirectory.boolValue
+
+        let stickerSnapshotBeforeRead = try SQLiteSnapshot.capture(
+            databaseURL: stickerDatabaseURL
         )
-        guard !snapshotBeforeRead.writeAheadLog.isNonempty else {
+        let favoritesSnapshotBeforeRead: SQLiteSnapshot? = hasFavoritesDatabase
+            ? try SQLiteSnapshot.capture(databaseURL: favoritesDatabaseURL)
+            : nil
+        guard !stickerSnapshotBeforeRead.writeAheadLog.isNonempty,
+              favoritesSnapshotBeforeRead?.writeAheadLog.isNonempty != true else {
             throw WhatsAppMVPError.uncheckpointedWriteAheadLog
         }
 
-        let database = try ReadOnlySQLite(url: databaseURL)
-        try validateSchema(database)
-        try database.execute("BEGIN DEFERRED TRANSACTION")
-        defer { try? database.execute("ROLLBACK") }
+        let stickerDatabase = try ReadOnlySQLite(url: stickerDatabaseURL)
+        let favoritesDatabase: ReadOnlySQLite? = hasFavoritesDatabase
+            ? try ReadOnlySQLite(url: favoritesDatabaseURL)
+            : nil
 
-        let rows: [Row] = try database.rows(
+        try validateStickerSchema(stickerDatabase)
+        if let favoritesDatabase {
+            try validateColumnAffinities(
+                VerifiedWhatsAppSchemaV26_28_22.favoriteColumnAffinities,
+                in: favoritesDatabase
+            )
+        }
+
+        try stickerDatabase.execute("BEGIN DEFERRED TRANSACTION")
+        try favoritesDatabase?.execute("BEGIN DEFERRED TRANSACTION")
+        defer {
+            try? favoritesDatabase?.execute("ROLLBACK")
+            try? stickerDatabase.execute("ROLLBACK")
+        }
+
+        let rows: [Row] = try stickerDatabase.rows(
             """
             SELECT
               p.Z_PK,
@@ -164,20 +192,57 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
                 }
             )
         }
-        try database.execute("ROLLBACK")
+        var sources = packs.map {
+            MacWhatsAppPack(
+                id: $0.id,
+                category: .stickerPacks,
+                title: $0.title,
+                author: $0.author,
+                stickers: $0.stickers
+            )
+        }
+
+        if let favoritesDatabase {
+            let favorites = try loadFavorites(
+                membershipDatabase: favoritesDatabase,
+                stickerDatabase: stickerDatabase,
+                stickersURL: resolvedStickersURL
+            )
+            if !favorites.isEmpty {
+                sources.insert(
+                    MacWhatsAppPack(
+                        id: MacWhatsAppPack.favoritesID,
+                        category: .favorites,
+                        title: "Favorites",
+                        author: "WhatsApp",
+                        stickers: favorites
+                    ),
+                    at: 0
+                )
+            }
+        }
+
+        try favoritesDatabase?.execute("ROLLBACK")
+        try stickerDatabase.execute("ROLLBACK")
 
         afterImmutableRead()
         guard !isWhatsAppRunning() else {
             throw WhatsAppMVPError.whatsappIsRunning
         }
-        guard try SQLiteSnapshot.capture(databaseURL: databaseURL)
-            == snapshotBeforeRead else {
+        guard try SQLiteSnapshot.capture(databaseURL: stickerDatabaseURL)
+            == stickerSnapshotBeforeRead else {
             throw WhatsAppMVPError.sourceChangedDuringRead
         }
-        guard !packs.isEmpty else {
+        if let favoritesSnapshotBeforeRead {
+            guard try SQLiteSnapshot.capture(databaseURL: favoritesDatabaseURL)
+                == favoritesSnapshotBeforeRead else {
+                throw WhatsAppMVPError.sourceChangedDuringRead
+            }
+        }
+        guard !sources.isEmpty else {
             throw WhatsAppMVPError.noLocalPacks
         }
-        return packs
+        return sources
     }
 
     private struct Row {
@@ -188,6 +253,95 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
         let order: Int
         let relativePath: String
         let rawEmoji: String
+    }
+
+    private struct FavoriteMembership {
+        let fileHash: String
+    }
+
+    private struct FavoriteMediaRow {
+        let stickerID: Int64
+        let fileHash: String
+        let relativePath: String
+        let rawEmoji: String
+        let mimeType: String
+    }
+
+    private func loadFavorites(
+        membershipDatabase: ReadOnlySQLite,
+        stickerDatabase: ReadOnlySQLite,
+        stickersURL: URL
+    ) throws -> [MacWhatsAppSticker] {
+        let memberships: [FavoriteMembership] = try membershipDatabase.rows(
+            """
+            SELECT ZKEY
+            FROM ZWAKEYVALUEELEMENT
+            WHERE ZNAMESPACE = 'fs.v2'
+              AND typeof(ZKEY) = 'text'
+              AND length(ZKEY) = 44
+              AND typeof(ZVALUE) = 'blob'
+              AND length(ZVALUE) = 1
+              AND hex(ZVALUE) = '01'
+            ORDER BY ZSORT DESC, ZDATE DESC, Z_PK DESC
+            """
+        ) {
+            FavoriteMembership(
+                fileHash: ReadOnlySQLite.text($0, 0) ?? ""
+            )
+        }
+
+        let mediaRows: [FavoriteMediaRow] = try stickerDatabase.rows(
+            """
+            SELECT
+              Z_PK,
+              COALESCE(ZFILEHASH, ''),
+              COALESCE(ZRELATIVEIMAGEPATH, ''),
+              COALESCE(ZEMOJIS, ''),
+              COALESCE(ZMIMETYPE, '')
+            FROM ZWACDSTICKER
+            WHERE ZSTICKERPACK IS NULL
+            """
+        ) {
+            FavoriteMediaRow(
+                stickerID: ReadOnlySQLite.int64($0, 0),
+                fileHash: ReadOnlySQLite.text($0, 1) ?? "",
+                relativePath: ReadOnlySQLite.text($0, 2) ?? "",
+                rawEmoji: ReadOnlySQLite.text($0, 3) ?? "",
+                mimeType: ReadOnlySQLite.text($0, 4) ?? ""
+            )
+        }
+
+        let rowsByHash = Dictionary(grouping: mediaRows, by: \.fileHash)
+        var seenHashes: Set<String> = []
+        var stickers: [MacWhatsAppSticker] = []
+
+        for membership in memberships {
+            guard seenHashes.insert(membership.fileHash).inserted,
+                  let matches = rowsByHash[membership.fileHash],
+                  matches.count == 1,
+                  let row = matches.first,
+                  row.mimeType == "image/webp",
+                  let mediaURL = safeStickerURL(
+                      relativePath: row.relativePath,
+                      stickersURL: stickersURL
+                  ),
+                  let data = try? Data(
+                      contentsOf: mediaURL,
+                      options: [.mappedIfSafe]
+                  ) else {
+                continue
+            }
+            stickers.append(
+                MacWhatsAppSticker(
+                    id: row.stickerID,
+                    order: stickers.count,
+                    relativePath: row.relativePath,
+                    emoji: firstEmoji(row.rawEmoji),
+                    data: data
+                )
+            )
+        }
+        return stickers
     }
 
     private func firstEmoji(_ raw: String) -> String {
@@ -232,14 +386,40 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
         return url.path.hasPrefix(rootPath)
     }
 
-    private func validateSchema(_ database: ReadOnlySQLite) throws {
+    private func validateStickerSchema(_ database: ReadOnlySQLite) throws {
+        try validateColumnAffinities(
+            VerifiedWhatsAppSchemaV26_28_22.requiredColumnAffinities,
+            in: database
+        )
+
+        let installedPackEntities: [Int64] = try database.rows(
+            """
+            SELECT Z_ENT
+            FROM Z_PRIMARYKEY
+            WHERE Z_NAME = 'WACDStickerPack'
+            ORDER BY Z_ENT
+            """
+        ) {
+            ReadOnlySQLite.int64($0, 0)
+        }
+        guard installedPackEntities == [
+            VerifiedWhatsAppSchemaV26_28_22.installedPackEntity
+        ] else {
+            throw WhatsAppMVPError.unsupportedSchema(
+                "WACDStickerPack must map to Core Data entity 2."
+            )
+        }
+    }
+
+    private func validateColumnAffinities(
+        _ required: [String: [String: SQLiteAffinity]],
+        in database: ReadOnlySQLite
+    ) throws {
         let tables = Set(try database.rows(
             "SELECT name FROM sqlite_master WHERE type = 'table'"
         ) {
             ReadOnlySQLite.text($0, 0) ?? ""
         })
-        let required =
-            VerifiedWhatsAppSchemaV26_28_22.requiredColumnAffinities
         for table in required.keys.sorted()
         where !tables.contains(table) {
             throw WhatsAppMVPError.missingTable(table)
@@ -273,23 +453,6 @@ struct WhatsAppStickerReader: WhatsAppStickerReading {
             }
         }
 
-        let installedPackEntities: [Int64] = try database.rows(
-            """
-            SELECT Z_ENT
-            FROM Z_PRIMARYKEY
-            WHERE Z_NAME = 'WACDStickerPack'
-            ORDER BY Z_ENT
-            """
-        ) {
-            ReadOnlySQLite.int64($0, 0)
-        }
-        guard installedPackEntities == [
-            VerifiedWhatsAppSchemaV26_28_22.installedPackEntity
-        ] else {
-            throw WhatsAppMVPError.unsupportedSchema(
-                "WACDStickerPack must map to Core Data entity 2."
-            )
-        }
     }
 }
 
@@ -384,7 +547,21 @@ private enum VerifiedWhatsAppSchemaV26_28_22 {
                 "ZSTICKERPACK": .integer,
                 "ZSORT": .integer,
                 "ZRELATIVEIMAGEPATH": .text,
-                "ZEMOJIS": .text
+                "ZEMOJIS": .text,
+                "ZMIMETYPE": .text,
+                "ZFILEHASH": .text
+            ]
+        ]
+
+    static let favoriteColumnAffinities:
+        [String: [String: SQLiteAffinity]] = [
+            "ZWAKEYVALUEELEMENT": [
+                "Z_PK": .integer,
+                "ZSORT": .integer,
+                "ZDATE": .numeric,
+                "ZKEY": .text,
+                "ZNAMESPACE": .text,
+                "ZVALUE": .blob
             ]
         ]
 }
