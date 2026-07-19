@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing v-prefixed tag to publish
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,6 +21,21 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Resolve release version
+        id: release
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          tag="${INPUT_TAG:-$GITHUB_REF_NAME}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must use the form v0.1.0: $tag" >&2
+            exit 2
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -35,16 +56,37 @@ jobs:
             test
 
       - name: Build DMG
-        run: script/release_dmg.sh "${GITHUB_REF_NAME#v}"
+        run: script/release_dmg.sh "${{ steps.release.outputs.version }}"
 
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" \
-            "dist/StickerPort-${version}.dmg" \
-            "dist/StickerPort-${version}.dmg.sha256" \
-            --generate-notes \
-            --title "StickerPort ${GITHUB_REF_NAME}" \
-            --verify-tag
+          retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              if "$@"; then
+                return 0
+              fi
+              if [[ "$attempt" -eq 3 ]]; then
+                return 1
+              fi
+              sleep "$((attempt * 10))"
+            done
+          }
+          ensure_release() {
+            if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+              return 0
+            fi
+            gh release create "$RELEASE_TAG" \
+              --generate-notes \
+              --title "StickerPort ${RELEASE_TAG}" \
+              --verify-tag
+          }
+          retry ensure_release
+          retry gh release upload "$RELEASE_TAG" \
+            "dist/StickerPort-${RELEASE_VERSION}.dmg" \
+            "dist/StickerPort-${RELEASE_VERSION}.dmg.sha256" \
+            --clobber
