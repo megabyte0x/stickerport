@@ -4,6 +4,7 @@ import test from "node:test";
 
 const DOWNLOAD_URL =
   "https://github.com/megabyte0x/stickerport/releases/download/v0.1.0/StickerPort-0.1.0.dmg";
+const ogImage = new URL("../public/og.png", import.meta.url);
 
 async function render() {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -47,6 +48,15 @@ test("server-renders the StickerPort download hero", async () => {
   );
   assert.doesNotMatch(html, /codex-preview|Building your site|SkeletonPreview/);
   assert.doesNotMatch(html, /automatic Signal upload|direct Signal install/i);
+});
+
+test("ships the validated StickerPort social card", async () => {
+  await access(ogImage);
+  const response = await render();
+  const html = await response.text();
+  assert.match(html, /property="og:image"/);
+  assert.match(html, /name="twitter:image"/);
+  assert.match(html, /http:\/\/localhost\/og\.png/);
 });
 
 test("locks the page to one responsive viewport and preserves accessibility", async () => {
