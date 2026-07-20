@@ -2,3 +2,5 @@ StickerBridge.xcodeproj/
 .build/
 dist/
 .worktrees/
+*.p8
+*.p12
