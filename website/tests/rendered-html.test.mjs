@@ -6,12 +6,14 @@ const DOWNLOAD_URL = "/download";
 const LATEST_DMG_URL =
   "https://github.com/megabyte0x/stickerport/releases/latest/download/StickerPort.dmg";
 const ogImage = new URL("../public/og.png", import.meta.url);
-const stickerAssets = [
-  "cuppy-smile.webp",
-  "cuppy-love.webp",
-  "cuppy-workhard.webp",
-  "cuppy-hi.webp",
-];
+const publicSignalTutorial = new URL(
+  "../public/signal-sticker-tutorial.mp4",
+  import.meta.url,
+);
+const appSignalTutorial = new URL(
+  "../../StickerBridgeMac/Resources/SignalStickerTutorial.mp4",
+  import.meta.url,
+);
 
 async function render(path = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -97,29 +99,44 @@ test("ships the validated StickerPort social card", async () => {
   assert.match(html, /http:\/\/localhost\/og\.png/);
 });
 
-test("renders real WhatsApp sample stickers in a macOS app frame", async () => {
-  await Promise.all(
-    stickerAssets.map((asset) =>
-      access(new URL(`../public/stickers/${asset}`, import.meta.url)),
-    ),
-  );
-
+test("renders the StickerPort-to-Signal handoff guide with the app tutorial", async () => {
   const response = await render();
   const html = await response.text();
 
   assert.match(html, /class="mac-window"/);
   assert.match(html, /class="window-toolbar"/);
-  assert.match(html, /class="sticker-shelf"/);
-  for (const asset of stickerAssets) {
-    assert.ok(html.includes(`src="/stickers/${asset}"`));
-  }
+  assert.match(html, /class="handoff-guide"/);
+  assert.match(html, /Requirements/);
+  assert.match(html, /WhatsApp Desktop/);
+  assert.match(html, /Signal Desktop/);
+  assert.match(html, /First, in StickerPort/);
+  assert.match(html, /Quit WhatsApp/);
+  assert.match(html, /Allow folder access/);
+  assert.match(html, /Pick your stickers/);
+  assert.match(html, /Create the Signal folder/);
+  assert.match(html, /Then, in Signal/);
+  assert.match(html, /Upload and install the pack/);
+  assert.ok(html.includes('src="/signal-sticker-tutorial.mp4"'));
+  assert.match(html, /aria-label="Signal sticker pack tutorial video"/);
+  assert.match(html, /autoPlay=""/);
+  assert.match(html, /controls=""/);
+  assert.match(html, /loop=""/);
+  assert.match(html, /muted=""/);
+  assert.match(html, /playsInline=""/);
+
   const body = html.slice(html.indexOf("<body"));
-  assert.match(body, /Your collection/);
+  assert.ok(body.indexOf("Requirements") < body.indexOf("First, in StickerPort"));
+  assert.ok(body.indexOf("First, in StickerPort") < body.indexOf("Then, in Signal"));
   assert.doesNotMatch(
     body,
-    /4 sample stickers|Local-only|No account|Official Cuppy sample artwork|Sticker source/,
+    /automatic Signal upload|direct Signal install/i,
   );
-  assert.doesNotMatch(html, /😂|🫶|😎/);
+
+  const [publicVideo, appVideo] = await Promise.all([
+    readFile(publicSignalTutorial),
+    readFile(appSignalTutorial),
+  ]);
+  assert.deepEqual(publicVideo, appVideo);
 });
 
 test("locks the page to one responsive viewport and preserves accessibility", async () => {

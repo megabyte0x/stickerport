@@ -209,7 +209,7 @@ a {
 }
 
 .hero-card,
-.sticker-shelf {
+.handoff-guide {
   min-width: 0;
   min-height: 0;
   border: 1px solid rgba(255, 255, 255, 0.84);
@@ -384,16 +384,16 @@ h1 {
   font-size: 0.62rem;
 }
 
-.sticker-shelf {
+.handoff-guide {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  margin: 0;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: clamp(0.7rem, 1.35vh, 1rem);
   overflow: hidden;
-  padding: clamp(1rem, 2.2vw, 1.8rem);
+  padding: clamp(1rem, 2vw, 1.55rem);
 }
 
-.sticker-shelf::before {
+.handoff-guide::before {
   position: absolute;
   top: -5rem;
   right: -5rem;
@@ -404,7 +404,7 @@ h1 {
   content: "";
 }
 
-.sticker-shelf::after {
+.handoff-guide::after {
   position: absolute;
   right: -4rem;
   bottom: -6rem;
@@ -415,208 +415,257 @@ h1 {
   content: "";
 }
 
-.shelf-heading {
+.guide-phase,
+.handoff-divider {
   position: relative;
-  z-index: 6;
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 1rem;
+  z-index: 2;
 }
 
-.shelf-heading p {
-  margin: 0 0 0.2rem;
+.guide-phase {
+  min-width: 0;
+}
+
+.requirements-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.72rem;
+  margin-bottom: clamp(0.55rem, 1vh, 0.72rem);
+  padding-bottom: clamp(0.5rem, 0.9vh, 0.68rem);
+  border-bottom: 1px solid var(--app-line);
+}
+
+.requirements-strip p {
+  margin: 0;
+  color: var(--app-muted);
+  font-size: 0.58rem;
+  font-weight: 820;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.requirements-strip ul {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: clamp(0.55rem, 1.1vw, 0.9rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.requirements-strip li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  color: var(--app-ink);
+  font-size: clamp(0.59rem, 0.73vw, 0.67rem);
+  font-weight: 720;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.requirement-mark {
+  display: grid;
+  width: 1.3rem;
+  height: 1.3rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.42rem;
+  color: white;
+  font-size: 0.58rem;
+  font-weight: 850;
+}
+
+.requirement-mark--whatsapp {
+  background: #2f9b72;
+}
+
+.requirement-mark--signal {
+  background: #3f75e5;
+}
+
+.phase-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.phase-number {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2.15rem;
+  height: 2.15rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--app-coral);
+  box-shadow: 0 8px 18px rgba(255, 111, 97, 0.22);
+  color: white;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.phase-number--signal {
+  background: #3f75e5;
+  box-shadow: 0 8px 18px rgba(63, 117, 229, 0.22);
+}
+
+.phase-heading p,
+.phase-heading h2 {
+  margin: 0;
+}
+
+.phase-heading p {
   color: var(--app-coral);
-  font-size: 0.68rem;
+  font-size: 0.61rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.shelf-heading strong {
-  color: var(--app-ink);
-  font-size: clamp(1.25rem, 2vw, 1.75rem);
-  letter-spacing: -0.042em;
+.guide-phase--signal .phase-heading p {
+  color: #3f75e5;
 }
 
-.shelf-heading > span {
-  padding: 0.42rem 0.64rem;
-  border: 1px solid var(--app-line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.64);
+.phase-heading h2 {
+  margin-top: 0.12rem;
+  color: var(--app-ink);
+  font-size: clamp(1rem, 1.55vw, 1.32rem);
+  font-weight: 780;
+  letter-spacing: -0.038em;
+  line-height: 1.05;
+}
+
+.stickerport-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: clamp(0.7rem, 1.2vh, 0.9rem) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stickerport-steps li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.55rem;
+  padding: 0.5rem 0.65rem 0.5rem 0;
+  border-top: 1px solid var(--app-line);
+}
+
+.stickerport-steps li:nth-child(even) {
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--app-line);
+}
+
+.step-number {
+  display: grid;
+  width: 1.38rem;
+  height: 1.38rem;
+  place-items: center;
+  border-radius: 0.46rem;
+  background: var(--app-coral-soft);
+  color: #c44d43;
+  font-size: 0.62rem;
+  font-weight: 850;
+}
+
+.stickerport-steps li > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 0.12rem;
+}
+
+.stickerport-steps strong {
+  color: var(--app-ink);
+  font-size: clamp(0.7rem, 0.92vw, 0.8rem);
+  letter-spacing: -0.018em;
+  line-height: 1.14;
+}
+
+.stickerport-steps small {
   color: var(--app-muted);
-  font-size: 0.65rem;
-  font-weight: 700;
+  font-size: clamp(0.58rem, 0.74vw, 0.67rem);
+  font-weight: 560;
+  line-height: 1.25;
+}
+
+.handoff-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--app-muted);
+  font-size: 0.61rem;
+  font-weight: 720;
+}
+
+.handoff-divider::before,
+.handoff-divider::after {
+  height: 1px;
+  flex: 1;
+  background: rgba(29, 33, 68, 0.1);
+  content: "";
+}
+
+.handoff-divider span {
   white-space: nowrap;
 }
 
-.shelf-stage {
-  position: relative;
-  z-index: 2;
+.handoff-divider svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: var(--app-coral);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.guide-phase--signal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
 }
 
-.transfer-path {
-  position: absolute;
-  top: 51%;
-  left: 10%;
-  width: 80%;
-  height: 2px;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      var(--app-coral) 0 8px,
-      transparent 8px 15px
-    );
-  opacity: 0.46;
-  transform: rotate(-7deg);
-}
-
-.transfer-path::after {
-  position: absolute;
-  top: 50%;
-  right: -0.1rem;
-  width: 0.65rem;
-  height: 0.65rem;
-  border-top: 2px solid var(--app-coral);
-  border-right: 2px solid var(--app-coral);
-  content: "";
-  transform: translateY(-50%) rotate(45deg);
-}
-
-.platform-chip {
-  position: absolute;
-  z-index: 7;
-  padding: 0.55rem 0.78rem;
-  border: 1px solid rgba(29, 33, 68, 0.08);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 10px 22px rgba(29, 33, 68, 0.09);
-  font-size: 0.68rem;
-  font-weight: 760;
-  backdrop-filter: blur(14px);
-}
-
-.platform-chip--source {
-  top: 48%;
-  left: 1%;
-  color: #327c62;
-}
-
-.platform-chip--destination {
-  top: 32%;
-  right: 1%;
-  color: #305db4;
-}
-
-.sample-sticker {
-  position: absolute;
-  z-index: 5;
-  width: clamp(4.8rem, 9.5vw, 8.3rem);
-  height: auto;
-  filter: drop-shadow(0 15px 12px rgba(43, 38, 70, 0.13));
-}
-
-.sample-sticker--smile {
-  top: 5%;
-  left: 7%;
-  transform: rotate(-8deg);
-}
-
-.sample-sticker--love {
-  top: 3%;
-  right: 12%;
-  transform: rotate(7deg);
-}
-
-.sample-sticker--work {
-  bottom: 1%;
-  left: 10%;
-  transform: rotate(6deg);
-}
-
-.sample-sticker--hi {
-  right: 7%;
-  bottom: 0;
-  transform: rotate(-5deg);
-}
-
-.folder-card {
-  position: absolute;
-  z-index: 6;
-  top: 36%;
-  left: 50%;
+.tutorial-frame {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  width: min(52%, 20rem);
-  align-items: center;
-  gap: 0.75rem;
-  padding: clamp(0.85rem, 1.6vw, 1.15rem);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 1.35rem;
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow:
-    0 20px 44px rgba(29, 33, 68, 0.15),
-    inset 0 1px 0 white;
-  transform: translateX(-50%) rotate(-4deg);
-  backdrop-filter: blur(20px) saturate(130%);
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  gap: 0.42rem;
+  margin: 0.65rem 0 0;
 }
 
-.folder-card__tab {
-  position: absolute;
-  top: -0.5rem;
-  left: 1.15rem;
-  width: 3.2rem;
-  height: 0.7rem;
-  border-radius: 0.7rem 0.7rem 0 0;
-  background: rgba(255, 255, 255, 0.84);
+.tutorial-frame video {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 1px solid rgba(29, 33, 68, 0.1);
+  border-radius: clamp(0.85rem, 1.5vw, 1.2rem);
+  background: #fff4ef;
+  box-shadow: 0 13px 28px rgba(29, 33, 68, 0.11);
+  object-fit: contain;
 }
 
-.folder-card__icon {
-  position: relative;
+.tutorial-frame figcaption {
   display: flex;
-  width: 3rem;
-  height: 2.4rem;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 0.18rem;
-  border-radius: 0.7rem;
-  background: linear-gradient(135deg, var(--app-coral-soft), #fff0e8);
-}
-
-.folder-card__icon span {
-  width: 0.36rem;
-  height: 0.36rem;
-  border-radius: 50%;
-  background: var(--app-coral);
-}
-
-.folder-card > div:not(.folder-card__icon) {
-  display: grid;
-  min-width: 0;
-  gap: 0.2rem;
-}
-
-.folder-card strong {
-  font-size: clamp(0.84rem, 1.25vw, 1rem);
-  letter-spacing: -0.03em;
-}
-
-.folder-card div > span {
-  overflow: hidden;
+  gap: 0.28rem;
   color: var(--app-muted);
-  font-size: 0.64rem;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: clamp(0.58rem, 0.72vw, 0.66rem);
+  font-weight: 680;
+  line-height: 1.2;
+  text-align: center;
 }
 
-.ready-dot {
-  width: 0.66rem;
-  height: 0.66rem;
-  border-radius: 50%;
-  background: #50c889;
-  box-shadow: 0 0 0 0.34rem rgba(80, 200, 137, 0.17);
+.tutorial-frame figcaption span {
+  color: #3f75e5;
+  font-weight: 850;
 }
 
 .site-footer {
@@ -684,52 +733,42 @@ h1 {
     max-width: 42rem;
   }
 
-  .sticker-shelf {
-    padding: 0.9rem 1.1rem;
+  .handoff-guide {
+    grid-template-columns: minmax(0, 0.93fr) auto minmax(0, 1.07fr);
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0.72rem;
+    padding: 0.85rem 1rem;
   }
 
-  .sample-sticker {
-    width: clamp(3.6rem, 12vw, 5.1rem);
+  .stickerport-steps {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 0.55rem;
   }
 
-  .sample-sticker--smile {
-    top: 4%;
-    left: 6%;
+  .stickerport-steps li,
+  .stickerport-steps li:nth-child(even) {
+    padding: 0.34rem 0;
+    border-left: 0;
   }
 
-  .sample-sticker--love {
-    top: 2%;
-    right: 8%;
+  .handoff-divider {
+    flex-direction: column;
+    justify-content: center;
   }
 
-  .sample-sticker--work {
-    bottom: -3%;
-    left: 16%;
+  .handoff-divider::before,
+  .handoff-divider::after {
+    width: 1px;
+    height: auto;
   }
 
-  .sample-sticker--hi {
-    right: 14%;
-    bottom: -4%;
+  .handoff-divider span {
+    display: none;
   }
 
-  .folder-card {
-    top: 38%;
-    width: min(42%, 16rem);
-    padding: 0.72rem;
-  }
-
-  .platform-chip--source {
-    top: 53%;
-    left: 1%;
-  }
-
-  .platform-chip--destination {
-    top: 39%;
-    right: 1%;
-  }
-
-  .transfer-path {
-    top: 59%;
+  .tutorial-frame {
+    margin-top: 0.5rem;
   }
 }
 
@@ -775,7 +814,7 @@ h1 {
   }
 
   .hero-card,
-  .sticker-shelf {
+  .handoff-guide {
     border-radius: 1.35rem;
   }
 
@@ -807,9 +846,7 @@ h1 {
   }
 
   .lede {
-    margin-top: 0.65rem;
-    font-size: 0.85rem;
-    line-height: 1.36;
+    display: none;
   }
 
   .actions {
@@ -831,52 +868,110 @@ h1 {
     display: none;
   }
 
-  .shelf-heading strong {
-    font-size: 1rem;
+  .handoff-guide {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 0.5rem;
+    padding: 0.75rem;
   }
 
-  .shelf-heading > span {
+  .phase-heading {
+    gap: 0.58rem;
+  }
+
+  .phase-number {
+    width: 1.8rem;
+    height: 1.8rem;
+    font-size: 0.68rem;
+  }
+
+  .phase-heading p {
+    font-size: 0.53rem;
+  }
+
+  .phase-heading h2 {
+    font-size: 0.98rem;
+  }
+
+  .stickerport-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 0.45rem;
+  }
+
+  .stickerport-steps li,
+  .stickerport-steps li:nth-child(even) {
+    padding: 0.35rem 0.42rem 0.35rem 0;
+    border-left: 0;
+  }
+
+  .stickerport-steps li:nth-child(even) {
+    padding-left: 0.52rem;
+    border-left: 1px solid var(--app-line);
+  }
+
+  .step-number {
+    width: 1.22rem;
+    height: 1.22rem;
+  }
+
+  .stickerport-steps small {
     display: none;
   }
 
-  .sample-sticker {
-    width: clamp(3.85rem, 22vw, 5.4rem);
+  .requirements-strip {
+    gap: 0.45rem;
+    margin-bottom: 0.45rem;
+    padding-bottom: 0.45rem;
   }
 
-  .sample-sticker--smile {
-    top: 5%;
-    left: 4%;
+  .requirements-strip p {
+    font-size: 0.51rem;
   }
 
-  .sample-sticker--love {
-    top: 1%;
-    right: 5%;
+  .requirements-strip ul {
+    gap: 0.42rem;
   }
 
-  .sample-sticker--work {
-    bottom: -2%;
-    left: 2%;
+  .requirements-strip li {
+    gap: 0.24rem;
+    font-size: 0.55rem;
   }
 
-  .sample-sticker--hi {
-    right: 2%;
-    bottom: -2%;
+  .requirement-mark {
+    width: 1.12rem;
+    height: 1.12rem;
+    font-size: 0.5rem;
   }
 
-  .folder-card {
-    top: 35%;
-    width: 54%;
-    padding: 0.65rem;
+  .handoff-divider {
+    flex-direction: row;
   }
 
-  .folder-card__icon {
-    width: 2.2rem;
-    height: 1.9rem;
+  .handoff-divider::before,
+  .handoff-divider::after {
+    width: auto;
+    height: 1px;
   }
 
-  .platform-chip {
-    padding: 0.42rem 0.56rem;
-    font-size: 0.58rem;
+  .handoff-divider span {
+    display: inline;
+    font-size: 0.54rem;
+  }
+
+  .tutorial-frame {
+    grid-template-rows: auto auto;
+    margin-top: 0.42rem;
+  }
+
+  .tutorial-frame video {
+    width: calc(100% - 0.4rem);
+    height: auto;
+    aspect-ratio: 16 / 9;
+    justify-self: center;
+  }
+
+  .tutorial-frame figcaption {
+    display: none;
   }
 
   .site-footer {
@@ -910,7 +1005,7 @@ h1 {
   }
 
   .hero-card,
-  .sticker-shelf {
+  .handoff-guide {
     border-radius: 1.35rem;
   }
 
@@ -941,6 +1036,27 @@ h1 {
 
   .trust-list {
     margin-top: 0.65rem;
+  }
+
+  .handoff-guide {
+    gap: 0.55rem;
+    padding: 0.78rem;
+  }
+
+  .stickerport-steps {
+    margin-top: 0.42rem;
+  }
+
+  .stickerport-steps li {
+    padding-block: 0.3rem;
+  }
+
+  .stickerport-steps small {
+    display: none;
+  }
+
+  .tutorial-frame {
+    margin-top: 0.4rem;
   }
 
   .site-footer {
@@ -984,16 +1100,31 @@ h1 {
     padding-block: 0.68rem;
   }
 
-  .shelf-heading strong {
-    font-size: 1rem;
+  .handoff-guide {
+    gap: 0.32rem;
+    padding: 0.55rem;
   }
 
-  .sample-sticker {
-    width: clamp(3.4rem, 9.5vh, 4.8rem);
+  .phase-number {
+    width: 1.55rem;
+    height: 1.55rem;
   }
 
-  .folder-card {
-    width: 58%;
+  .phase-heading h2 {
+    font-size: 0.82rem;
+  }
+
+  .stickerport-steps {
+    margin-top: 0.25rem;
+  }
+
+  .stickerport-steps li {
+    padding-block: 0.22rem;
+  }
+
+  .handoff-divider span,
+  .tutorial-frame figcaption {
+    display: none;
   }
 }
 
@@ -1014,9 +1145,7 @@ h1 {
 
 @media (prefers-reduced-transparency: reduce) {
   .hero-card,
-  .sticker-shelf,
-  .folder-card,
-  .platform-chip {
+  .handoff-guide {
     background: #ffffff;
     backdrop-filter: none;
   }
@@ -1024,9 +1153,8 @@ h1 {
 
 @media (prefers-contrast: more) {
   .hero-card,
-  .sticker-shelf,
-  .folder-card,
-  .platform-chip {
+  .handoff-guide,
+  .tutorial-frame video {
     border: 2px solid var(--app-ink);
     background: #ffffff;
   }

@@ -1,23 +1,24 @@
 import Image from "next/image";
 import { TrackedDownloadLink } from "./analytics";
+import { SignalTutorialVideo } from "./signal-tutorial-video";
 import { siteConfig } from "./site-config";
 
-const stickers = [
+const stickerPortSteps = [
   {
-    src: "/stickers/cuppy-smile.webp",
-    className: "sample-sticker sample-sticker--smile",
+    title: "Quit WhatsApp",
+    detail: "Use WhatsApp → Quit WhatsApp.",
   },
   {
-    src: "/stickers/cuppy-love.webp",
-    className: "sample-sticker sample-sticker--love",
+    title: "Allow folder access",
+    detail: "Choose WhatsApp’s shared folder when asked.",
   },
   {
-    src: "/stickers/cuppy-workhard.webp",
-    className: "sample-sticker sample-sticker--work",
+    title: "Pick your stickers",
+    detail: "Select packs or Favorites, up to 200.",
   },
   {
-    src: "/stickers/cuppy-hi.webp",
-    className: "sample-sticker sample-sticker--hi",
+    title: "Create the Signal folder",
+    detail: "Choose where StickerPort should save it.",
   },
 ] as const;
 
@@ -94,55 +95,75 @@ export default function Home() {
               </ul>
             </div>
 
-            <figure
-              className="sticker-shelf"
-              aria-label="Real WhatsApp sample stickers prepared by StickerPort"
-            >
-              <div className="shelf-heading">
-                <div>
-                  <p>Sticker shelf</p>
-                  <strong>Bring the ones you love.</strong>
+            <aside className="handoff-guide" aria-label="How to move stickers into Signal">
+              <section className="guide-phase" aria-labelledby="stickerport-steps-title">
+                <div className="requirements-strip">
+                  <p>Requirements</p>
+                  <ul aria-label="Required desktop apps">
+                    <li>
+                      <span className="requirement-mark requirement-mark--whatsapp" aria-hidden="true">
+                        W
+                      </span>
+                      WhatsApp Desktop
+                    </li>
+                    <li>
+                      <span className="requirement-mark requirement-mark--signal" aria-hidden="true">
+                        S
+                      </span>
+                      Signal Desktop
+                    </li>
+                  </ul>
                 </div>
-                <span>Your collection</span>
-              </div>
 
-              <div className="shelf-stage">
-                <span className="platform-chip platform-chip--source">
-                  WhatsApp
-                </span>
-                <div className="transfer-path" aria-hidden="true" />
-
-                {stickers.map((sticker) => (
-                  <Image
-                    className={sticker.className}
-                    src={sticker.src}
-                    alt=""
-                    width={256}
-                    height={256}
-                    key={sticker.src}
-                    unoptimized
-                  />
-                ))}
-
-                <div className="folder-card">
-                  <span className="folder-card__tab" aria-hidden="true" />
-                  <div className="folder-card__icon" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
+                <header className="phase-heading">
+                  <span className="phase-number" aria-hidden="true">1</span>
                   <div>
-                    <strong>Signal-ready</strong>
-                    <span>Ordinary folder</span>
+                    <p>First, in StickerPort</p>
+                    <h2 id="stickerport-steps-title">Prepare your sticker folder</h2>
                   </div>
-                  <span className="ready-dot" aria-hidden="true" />
-                </div>
+                </header>
 
-                <span className="platform-chip platform-chip--destination">
-                  Signal
-                </span>
+                <ol className="stickerport-steps">
+                  {stickerPortSteps.map((step, index) => (
+                    <li key={step.title}>
+                      <span className="step-number" aria-hidden="true">
+                        {index + 1}
+                      </span>
+                      <span>
+                        <strong>{step.title}</strong>
+                        <small>{step.detail}</small>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+
+              <div className="handoff-divider" aria-hidden="true">
+                <span>StickerPort opens the folder in Finder</span>
+                <svg viewBox="0 0 24 24" role="presentation">
+                  <path d="M5 12h13M14 7l5 5-5 5" />
+                </svg>
               </div>
-            </figure>
+
+              <section className="guide-phase guide-phase--signal" aria-labelledby="signal-steps-title">
+                <header className="phase-heading">
+                  <span className="phase-number phase-number--signal" aria-hidden="true">2</span>
+                  <div>
+                    <p>Then, in Signal</p>
+                    <h2 id="signal-steps-title">Upload and install the pack</h2>
+                  </div>
+                </header>
+
+                <figure className="tutorial-frame">
+                  <SignalTutorialVideo />
+                  <figcaption>
+                    Open creator <span aria-hidden="true">→</span> Select all
+                    <span aria-hidden="true">→</span> Add details
+                    <span aria-hidden="true">→</span> Upload &amp; install
+                  </figcaption>
+                </figure>
+              </section>
+            </aside>
           </section>
 
           <footer className="site-footer">
