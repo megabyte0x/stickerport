@@ -1,6 +1,7 @@
 "use client";
 
 import mixpanel from "mixpanel-browser/src/loaders/loader-module-core";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, type ReactNode } from "react";
 
 const projectToken = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN?.trim();
@@ -9,6 +10,47 @@ const apiHost =
   "https://api.mixpanel.com";
 
 let analyticsInitialized = false;
+
+function pageType(path: string) {
+  if (path === "/") return "landing";
+  if (path.startsWith("/guides/")) return "guide";
+  if (path === "/signal-sticker-requirements") return "reference";
+  if (path === "/faq") return "faq";
+  if (path === "/privacy") return "trust";
+  if (path === "/about") return "company";
+  return "other";
+}
+
+function trafficSource(referrer: string) {
+  if (!referrer) return { traffic_source: "direct", referrer_host: "" };
+
+  try {
+    const host = new URL(referrer).hostname.toLowerCase();
+    if (host === window.location.hostname.toLowerCase()) {
+      return { traffic_source: "internal", referrer_host: host };
+    }
+
+    const organicSearchHosts = [
+      "google.",
+      "bing.com",
+      "duckduckgo.com",
+      "search.brave.com",
+      "yahoo.",
+      "ecosia.org",
+      "perplexity.ai",
+      "chatgpt.com",
+    ];
+    const organic = organicSearchHosts.some((candidate) =>
+      host.includes(candidate),
+    );
+    return {
+      traffic_source: organic ? "organic_search" : "referral",
+      referrer_host: host,
+    };
+  } catch {
+    return { traffic_source: "unknown", referrer_host: "" };
+  }
+}
 
 function initializeAnalytics() {
   if (!projectToken) {
@@ -38,18 +80,25 @@ function initializeAnalytics() {
 }
 
 export function Analytics() {
-  const pageViewTracked = useRef(false);
+  const pathname = usePathname();
+  const lastTrackedPath = useRef<string | null>(null);
 
   useEffect(() => {
-    if (pageViewTracked.current || !initializeAnalytics()) {
+    if (
+      !pathname ||
+      lastTrackedPath.current === pathname ||
+      !initializeAnalytics()
+    ) {
       return;
     }
 
-    mixpanel.track("Landing Page Viewed", {
-      page: "home",
+    mixpanel.track("Page Viewed", {
+      page_path: pathname,
+      page_type: pageType(pathname),
+      ...trafficSource(document.referrer),
     });
-    pageViewTracked.current = true;
-  }, []);
+    lastTrackedPath.current = pathname;
+  }, [pathname]);
 
   return null;
 }
@@ -58,10 +107,12 @@ export function TrackedDownloadLink({
   children,
   className,
   href,
+  placement = "hero",
 }: {
   children: ReactNode;
   className: string;
   href: string;
+  placement?: string;
 }) {
   const linkRef = useRef<HTMLAnchorElement>(null);
   const trackingBound = useRef(false);
@@ -78,10 +129,13 @@ export function TrackedDownloadLink({
     mixpanel.track_links(linkRef.current, "Download Clicked", {
       destination: "latest_dmg",
       platform: "macOS",
-      placement: "hero",
+      placement,
+      page_path: window.location.pathname,
+      page_type: pageType(window.location.pathname),
+      ...trafficSource(document.referrer),
     });
     trackingBound.current = true;
-  }, []);
+  }, [placement]);
 
   return (
     <a

@@ -1,0 +1,41 @@
+# StickerPort
+
+> StickerPort is a local-only, read-only macOS app that prepares the WhatsApp Desktop stickers already stored on a Mac for Signal Desktop's official sticker creator.
+
+Canonical site: https://stickerport.megabyte.sh/
+Current release: 0.2.1
+Platform: macOS 15 or later, Apple silicon and Intel
+Source: https://github.com/megabyte0x/stickerport
+Maintainer: megabyte0x — https://github.com/megabyte0x
+Content reviewed: 2026-07-20
+
+## Key facts
+
+- The user explicitly selects WhatsApp's shared folder.
+- StickerPort opens supported SQLite sources read-only and validates that the source is inactive and stable.
+- Exported sticker files stay in a normal folder selected by the user.
+- StickerPort does not change WhatsApp data, upload a pack, or write to Signal's private storage.
+- The current release supports static 512 x 512 WebP stickers at or below 300 KiB, with up to 200 stickers per pack.
+- The final upload and installation happen in Signal Desktop through File > Create/Upload Sticker Pack.
+- StickerPort is independent and is not affiliated with WhatsApp or Signal.
+
+## Primary pages
+
+- [StickerPort for macOS](https://stickerport.megabyte.sh/): Product overview, supported platform, privacy boundaries, and download.
+- [Transfer WhatsApp stickers to Signal](https://stickerport.megabyte.sh/guides/transfer-whatsapp-stickers-to-signal): Seven-step local transfer workflow with troubleshooting.
+- [Signal sticker requirements](https://stickerport.megabyte.sh/signal-sticker-requirements): Source-backed formats, dimensions, file-size, emoji, and pack limits.
+- [Privacy and read-only design](https://stickerport.megabyte.sh/privacy): Exact reads, writes, safety checks, and website measurement boundaries.
+- [StickerPort FAQ](https://stickerport.megabyte.sh/faq): Compatibility, Full Disk Access, animated-sticker, and affiliation answers.
+- [About StickerPort](https://stickerport.megabyte.sh/about): Maintainer, principles, release evidence, and independent-project status.
+- [Download StickerPort](https://stickerport.megabyte.sh/download): Redirect to the current verified macOS DMG.
+
+## Authoritative external reference
+
+- [Signal sticker documentation](https://support.signal.org/hc/en-us/articles/360031836512-Stickers): Official creator workflow, supported formats, and pack requirements.
+
+## Citation guidance
+
+- Attribute StickerPort product behavior to the product page, privacy page, or public source repository.
+- Attribute Signal formats and upload rules to Signal's official sticker documentation.
+- Preserve the distinction between local export by StickerPort and final upload by Signal Desktop.
+- State that animated sticker export is not supported in StickerPort 0.2.1.

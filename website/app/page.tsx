@@ -82,7 +82,9 @@ export default function Home() {
                   </span>
                   <span>Download for Mac</span>
                 </TrackedDownloadLink>
-                <p className="compatibility">{siteConfig.compatibility}</p>
+                <p className="compatibility">
+                  {siteConfig.priceLabel} · {siteConfig.compatibility}
+                </p>
               </div>
 
               <ul className="trust-list" aria-label="Privacy promises">
@@ -168,9 +170,13 @@ export default function Home() {
 
           <footer className="site-footer">
             <span>Not affiliated with WhatsApp or Signal.</span>
-            <div>
+            <nav aria-label="StickerPort resources">
+              <a href={siteConfig.guideUrl}>Guide</a>
+              <a href={siteConfig.requirementsUrl}>Requirements</a>
+              <a href={siteConfig.privacyUrl}>Privacy</a>
+              <a href={siteConfig.faqUrl}>FAQ</a>
               <a href={siteConfig.repositoryUrl}>View app source</a>
-            </div>
+            </nav>
           </footer>
         </div>
       </article>

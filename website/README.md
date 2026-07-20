@@ -25,12 +25,13 @@ client assets bypass the Vinext Worker and are served directly by Pages.
 
 The site sends two focused events to Mixpanel:
 
-- `Landing Page Viewed`
+- `Page Viewed`
 - `Download Clicked`
 
-Autocapture, session recording, IP geolocation, and persistent visitor storage
-are disabled. Configure the public project settings from `.env.example` before
-building:
+Both events include the page path/type, a coarse traffic source, and only the
+referring hostname. Autocapture, session recording, IP geolocation, full
+referrer URLs, query strings, and persistent visitor storage are disabled.
+Configure the public project settings from `.env.example` before building:
 
 ```bash
 cp .env.example .env.production.local
@@ -38,6 +39,21 @@ cp .env.example .env.production.local
 
 Set `NEXT_PUBLIC_MIXPANEL_TOKEN` to the Mixpanel project token and keep
 `NEXT_PUBLIC_MIXPANEL_API_HOST` aligned with the project's data residency.
+
+## SEO foundation
+
+The production site includes:
+
+- canonical metadata for `https://stickerport.megabyte.sh`
+- SoftwareApplication, WebSite, Organization, HowTo, FAQ, article, and
+  breadcrumb structured data
+- `robots.txt`, `sitemap.xml`, and `llms.txt`
+- a transfer guide, Signal requirements reference, privacy page, FAQ, and about
+  page
+- optional Google and Bing verification values in `.env.example`
+
+The strategy, GEO analysis, competitor review, content calendar, roadmap, and
+URL architecture are in `docs/seo/`.
 
 ## Cloudflare deployment
 
@@ -121,7 +137,8 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 
 - `npm run dev`: start local development
 - `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
+- `npm test`: build the Cloudflare output and verify routes, metadata, schema,
+  discovery files, assets, and the stable download redirect
 - `npm run db:generate`: generate Drizzle migrations after schema changes
 
 ## Learn More

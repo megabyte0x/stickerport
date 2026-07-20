@@ -13,6 +13,9 @@ test("stages a Cloudflare Pages advanced-mode deployment", async () => {
     access(new URL("assets/", pagesOutput)),
     access(new URL("stickerport-icon.png", pagesOutput)),
     access(new URL("signal-sticker-tutorial.mp4", pagesOutput)),
+    access(new URL("robots.txt", pagesOutput)),
+    access(new URL("sitemap.xml", pagesOutput)),
+    access(new URL("llms.txt", pagesOutput)),
     access(new URL("_routes.json", pagesOutput)),
     access(new URL("wrangler.jsonc", pagesOutput)),
   ]);
