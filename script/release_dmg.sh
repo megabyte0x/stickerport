@@ -10,6 +10,8 @@ DIST_DIR="$ROOT_DIR/dist"
 DMG_NAME="$APP_NAME-$VERSION.dmg"
 DMG_PATH="$DIST_DIR/$DMG_NAME"
 CHECKSUM_PATH="$DMG_PATH.sha256"
+STABLE_DMG_PATH="$DIST_DIR/$APP_NAME.dmg"
+STABLE_CHECKSUM_PATH="$STABLE_DMG_PATH.sha256"
 SIGNING_IDENTITY="${RELEASE_SIGNING_IDENTITY:-}"
 DEVELOPMENT_TEAM_VALUE="${DEVELOPMENT_TEAM:-}"
 ARCHITECTURES="${ARCHS:-arm64 x86_64}"
@@ -147,6 +149,7 @@ if /usr/libexec/PlistBuddy \
 fi
 
 mkdir -p "$DIST_DIR"
+rm -f "$STABLE_DMG_PATH" "$STABLE_CHECKSUM_PATH"
 ditto "$APP_BUNDLE" "$STAGING_DIR/$APP_NAME.app"
 ln -s /Applications "$STAGING_DIR/Applications"
 
@@ -181,13 +184,12 @@ if [[ "$SIGNING_IDENTITY" != "-" ]]; then
   xcrun notarytool submit "$DMG_PATH" "${notary_arguments[@]}" --wait
   xcrun stapler staple "$DMG_PATH"
   xcrun stapler validate "$DMG_PATH"
-  spctl --assess --type execute --verbose=2 "$APP_BUNDLE"
-  spctl \
-    --assess \
-    --type open \
-    --context context:primary-signature \
-    --verbose=2 \
-    "$DMG_PATH"
+  "$ROOT_DIR/script/verify_release_dmg.sh" "$DMG_PATH" "$VERSION"
+  ditto "$DMG_PATH" "$STABLE_DMG_PATH"
+  (
+    cd "$DIST_DIR"
+    shasum -a 256 "$APP_NAME.dmg" > "$APP_NAME.dmg.sha256"
+  )
 else
   echo "Created an explicitly allowed ad-hoc DMG for local testing only."
 fi
@@ -199,4 +201,8 @@ fi
 
 echo "Created $DMG_PATH"
 echo "Created $CHECKSUM_PATH"
+if [[ "$SIGNING_IDENTITY" != "-" ]]; then
+  echo "Created $STABLE_DMG_PATH"
+  echo "Created $STABLE_CHECKSUM_PATH"
+fi
 lipo -info "$APP_BUNDLE/Contents/MacOS/$APP_NAME"

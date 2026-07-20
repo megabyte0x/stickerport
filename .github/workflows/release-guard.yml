@@ -1,0 +1,78 @@
+name: Guard Published DMG
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-guard-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: macos-26
+    env:
+      EXPECTED_TEAM_ID: 9UR77TD484
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+
+    steps:
+      - name: Check out current release verifier
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Resolve release version
+        id: release
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must use the form v0.1.0: $RELEASE_TAG" >&2
+            exit 2
+          fi
+          echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download published DMG assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          gh release download "$RELEASE_TAG" \
+            --dir dist/guard \
+            --pattern "StickerPort-${RELEASE_VERSION}.dmg" \
+            --pattern "StickerPort-${RELEASE_VERSION}.dmg.sha256" \
+            --pattern "StickerPort.dmg" \
+            --pattern "StickerPort.dmg.sha256"
+
+      - name: Verify published DMG
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          cmp \
+            "dist/guard/StickerPort-${RELEASE_VERSION}.dmg" \
+            dist/guard/StickerPort.dmg
+          stable_expected="$(
+            awk 'NR == 1 { print $1 }' \
+              dist/guard/StickerPort.dmg.sha256
+          )"
+          stable_actual="$(
+            shasum -a 256 dist/guard/StickerPort.dmg |
+              awk '{ print $1 }'
+          )"
+          if [[ -z "$stable_expected" || "$stable_actual" != "$stable_expected" ]]; then
+            echo "Stable DMG checksum verification failed." >&2
+            exit 1
+          fi
+          script/verify_release_dmg.sh \
+            "dist/guard/StickerPort-${RELEASE_VERSION}.dmg" \
+            "$RELEASE_VERSION"
+
+      - name: Unpublish release when verification fails
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit "$RELEASE_TAG" --draft --verify-tag
+          echo "Release $RELEASE_TAG was returned to draft because its DMG failed verification." >&2

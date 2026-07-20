@@ -11,8 +11,10 @@ Signal Desktop's official sticker creator.
 
 ## Download
 
-Download `StickerPort-0.2.1.dmg` and its checksum from the
-[v0.2.1 release](https://github.com/megabyte0x/stickerport/releases/tag/v0.2.1).
+Download the latest verified DMG from
+[stickerport.megabyte.sh](https://stickerport.megabyte.sh/download). Versioned
+DMGs and their checksums are available on the
+[latest release](https://github.com/megabyte0x/stickerport/releases/latest).
 StickerPort requires macOS 15 or newer.
 
 Release DMGs are signed with a Developer ID Application certificate and
@@ -20,10 +22,11 @@ notarized by Apple. If Gatekeeper reports that Apple cannot verify the DMG,
 do not bypass the warning: verify the checksum and report the affected release
 asset so it can be replaced.
 
-To verify the download:
+To verify a versioned download, run the command from the directory containing
+the DMG and its matching `.sha256` file:
 
 ```sh
-shasum -a 256 -c StickerPort-0.2.1.dmg.sha256
+shasum -a 256 -c StickerPort-VERSION.dmg.sha256
 ```
 
 ## Use StickerPort
@@ -112,15 +115,20 @@ The GitHub release workflow requires these Actions secrets:
 - `MACOS_DEVELOPER_ID_CERTIFICATE_BASE64`: base64-encoded Developer ID
   Application `.p12` certificate
 - `MACOS_DEVELOPER_ID_CERTIFICATE_PASSWORD`: password for the `.p12`
-- `APPLE_TEAM_ID`: Apple Developer team identifier
 - `APPLE_NOTARY_KEY_BASE64`: base64-encoded App Store Connect API `.p8` key
 - `APPLE_NOTARY_KEY_ID`: App Store Connect API key identifier
 - `APPLE_NOTARY_ISSUER_ID`: issuer UUID for the team API key
 
 The workflow imports the certificate into a temporary keychain, submits the
-DMG with `notarytool`, staples the ticket, runs Gatekeeper assessments, and
-only then uploads the release assets. A manual workflow run can replace an
-existing tag's assets using the fixed workflow from the selected branch.
+DMG with `notarytool`, staples the ticket, and requires Gatekeeper to report
+`source=Notarized Developer ID`. It uploads assets to a draft, downloads and
+verifies them again, and only then publishes the release. The stable
+`StickerPort.dmg` download alias is created only by this verified path.
+
+A separate release guard verifies manually published releases and returns any
+release with a missing, altered, ad-hoc, or unnotarized DMG to draft. A manual
+workflow run can replace an existing tag's assets using the fixed workflow
+from the selected branch.
 
 ## Releases and changelog
 

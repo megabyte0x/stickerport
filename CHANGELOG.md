@@ -7,6 +7,16 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Fixed
+
+- Release publishing now stages assets as a draft, verifies the uploaded DMG,
+  and exposes the stable download alias only after Developer ID, notarization,
+  Gatekeeper, checksum, version, entitlement, and architecture checks pass.
+- Manually published releases are automatically returned to draft if their DMG
+  is missing or fails the same distribution checks.
+- The website download route no longer depends on GitHub's rate-limited latest
+  release API.
+
 ## [0.2.1] - 2026-07-19
 
 ### Added

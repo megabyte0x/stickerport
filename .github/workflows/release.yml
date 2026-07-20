@@ -14,6 +14,13 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  APPLE_TEAM_ID: 9UR77TD484
+
 jobs:
   release:
     runs-on: macos-26
@@ -42,7 +49,6 @@ jobs:
           NOTARY_KEY_BASE64: ${{ secrets.APPLE_NOTARY_KEY_BASE64 }}
           NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
           NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
-          DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           missing=()
           [[ -n "$CERTIFICATE_BASE64" ]] || missing+=(MACOS_DEVELOPER_ID_CERTIFICATE_BASE64)
@@ -50,7 +56,6 @@ jobs:
           [[ -n "$NOTARY_KEY_BASE64" ]] || missing+=(APPLE_NOTARY_KEY_BASE64)
           [[ -n "$NOTARY_KEY_ID" ]] || missing+=(APPLE_NOTARY_KEY_ID)
           [[ -n "$NOTARY_ISSUER_ID" ]] || missing+=(APPLE_NOTARY_ISSUER_ID)
-          [[ -n "$DEVELOPMENT_TEAM" ]] || missing+=(APPLE_TEAM_ID)
           if (( ${#missing[@]} > 0 )); then
             echo "Missing required GitHub Actions secrets:" >&2
             printf '  - %s\n' "${missing[@]}" >&2
@@ -127,17 +132,30 @@ jobs:
       - name: Build DMG
         env:
           RELEASE_SIGNING_IDENTITY: ${{ steps.signing.outputs.identity }}
-          DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          DEVELOPMENT_TEAM: ${{ env.APPLE_TEAM_ID }}
           NOTARY_KEY_PATH: ${{ steps.notary.outputs.key_path }}
           NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
           NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
         run: script/release_dmg.sh "${{ steps.release.outputs.version }}"
 
-      - name: Publish GitHub release
+      - name: Verify stable download asset
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          EXPECTED_TEAM_ID: ${{ env.APPLE_TEAM_ID }}
+        run: |
+          cmp \
+            "dist/StickerPort-${RELEASE_VERSION}.dmg" \
+            dist/StickerPort.dmg
+          script/verify_release_dmg.sh \
+            "dist/StickerPort-${RELEASE_VERSION}.dmg" \
+            "$RELEASE_VERSION"
+
+      - name: Stage, verify, and publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          EXPECTED_TEAM_ID: ${{ env.APPLE_TEAM_ID }}
         run: |
           retry() {
             local attempt
@@ -151,20 +169,57 @@ jobs:
               sleep "$((attempt * 10))"
             done
           }
-          ensure_release() {
+          ensure_draft_release() {
             if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+              gh release edit "$RELEASE_TAG" --draft --verify-tag
               return 0
             fi
             gh release create "$RELEASE_TAG" \
+              --draft \
               --generate-notes \
               --title "StickerPort ${RELEASE_TAG}" \
               --verify-tag
           }
-          retry ensure_release
+          verify_dir="$(mktemp -d "$RUNNER_TEMP/StickerPort-upload.XXXXXX")"
+          trap 'rm -rf "$verify_dir"' EXIT
+
+          retry ensure_draft_release
           retry gh release upload "$RELEASE_TAG" \
             "dist/StickerPort-${RELEASE_VERSION}.dmg" \
             "dist/StickerPort-${RELEASE_VERSION}.dmg.sha256" \
+            dist/StickerPort.dmg \
+            dist/StickerPort.dmg.sha256 \
             --clobber
+          retry gh release download "$RELEASE_TAG" \
+            --dir "$verify_dir" \
+            --pattern "StickerPort-${RELEASE_VERSION}.dmg" \
+            --pattern "StickerPort-${RELEASE_VERSION}.dmg.sha256" \
+            --pattern "StickerPort.dmg" \
+            --pattern "StickerPort.dmg.sha256"
+
+          cmp \
+            "$verify_dir/StickerPort-${RELEASE_VERSION}.dmg" \
+            "$verify_dir/StickerPort.dmg"
+          stable_expected="$(
+            awk 'NR == 1 { print $1 }' \
+              "$verify_dir/StickerPort.dmg.sha256"
+          )"
+          stable_actual="$(
+            shasum -a 256 "$verify_dir/StickerPort.dmg" |
+              awk '{ print $1 }'
+          )"
+          if [[ -z "$stable_expected" || "$stable_actual" != "$stable_expected" ]]; then
+            echo "Stable DMG checksum verification failed." >&2
+            exit 1
+          fi
+          script/verify_release_dmg.sh \
+            "$verify_dir/StickerPort-${RELEASE_VERSION}.dmg" \
+            "$RELEASE_VERSION"
+
+          retry gh release edit "$RELEASE_TAG" \
+            --draft=false \
+            --latest \
+            --verify-tag
 
       - name: Remove temporary signing keychain
         if: always()

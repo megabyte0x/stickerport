@@ -3,10 +3,8 @@ import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const DOWNLOAD_URL = "/download";
-const LATEST_RELEASE_API =
-  "https://api.github.com/repos/megabyte0x/stickerport/releases/latest";
 const LATEST_DMG_URL =
-  "https://github.com/megabyte0x/stickerport/releases/download/v0.2.0/StickerPort-0.2.0.dmg";
+  "https://github.com/megabyte0x/stickerport/releases/latest/download/StickerPort.dmg";
 const ogImage = new URL("../public/og.png", import.meta.url);
 const stickerAssets = [
   "cuppy-smile.webp",
@@ -67,32 +65,14 @@ test("server-renders the StickerPort download hero", async () => {
   assert.doesNotMatch(html, /automatic Signal upload|direct Signal install/i);
 });
 
-test("redirects the download button to the latest published DMG", async (t) => {
+test("redirects the download button to the pipeline-verified stable DMG", async (t) => {
   const originalFetch = globalThis.fetch;
   t.after(() => {
     globalThis.fetch = originalFetch;
   });
 
-  globalThis.fetch = async (input, init) => {
-    const url = input instanceof Request ? input.url : String(input);
-    assert.equal(url, LATEST_RELEASE_API);
-    assert.deepEqual(init?.headers, {
-      Accept: "application/vnd.github+json",
-      "User-Agent": "StickerPort-Website",
-      "X-GitHub-Api-Version": "2022-11-28",
-    });
-    return Response.json({
-      assets: [
-        {
-          name: "StickerPort-0.2.0.dmg.sha256",
-          browser_download_url: `${LATEST_DMG_URL}.sha256`,
-        },
-        {
-          name: "StickerPort-0.2.0.dmg",
-          browser_download_url: LATEST_DMG_URL,
-        },
-      ],
-    });
+  globalThis.fetch = async () => {
+    assert.fail("The download route must not depend on the GitHub API.");
   };
 
   const response = await render("/download");
